@@ -1,0 +1,96 @@
+import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/auth";
+
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const category = searchParams.get("category");
+  const search = searchParams.get("search");
+
+  const where: Prisma.ProductWhereInput = {};
+
+  if (category) {
+    where.category = category;
+  }
+
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: "insensitive" } },
+      { barcode: { contains: search } },
+    ];
+  }
+
+  const products = await prisma.product.findMany({
+    where,
+    orderBy: { name: "asc" },
+    select: {
+      id: true,
+      name: true,
+      barcode: true,
+      sell_price: true,
+      cost_price: true,
+      stock_quantity: true,
+      category: true,
+      image_url: true,
+    },
+  });
+
+  return NextResponse.json(
+    products.map((p) => ({
+      ...p,
+      sell_price: Number(p.sell_price),
+      cost_price: Number(p.cost_price),
+    }))
+  );
+}
+
+export async function POST(req: Request) {
+  const admin = await requireAdmin();
+  if (!admin) {
+    return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
+  }
+
+  try {
+    const body = await req.json();
+    const { name, barcode, cost_price, sell_price, stock_quantity, category, image_url } = body;
+
+    if (!name || !barcode || sell_price == null || !category) {
+      return NextResponse.json(
+        { error: "Campos obrigatórios: name, barcode, sell_price, category" },
+        { status: 400 }
+      );
+    }
+
+    const existing = await prisma.product.findUnique({ where: { barcode } });
+    if (existing) {
+      return NextResponse.json(
+        { error: "Já existe um produto com este código de barras." },
+        { status: 409 }
+      );
+    }
+
+    const product = await prisma.product.create({
+      data: {
+        name,
+        barcode,
+        cost_price: cost_price ?? 0,
+        sell_price,
+        stock_quantity: stock_quantity ?? 0,
+        category,
+        image_url: image_url || null,
+      },
+    });
+
+    return NextResponse.json(
+      { ...product, sell_price: Number(product.sell_price), cost_price: Number(product.cost_price) },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error("Error creating product:", error);
+    return NextResponse.json(
+      { error: "Erro interno ao criar produto." },
+      { status: 500 }
+    );
+  }
+}
