@@ -113,14 +113,14 @@ export function Sidebar() {
         <div className="flex flex-col items-center gap-2">
           <Image
             src="/logo.png"
-            alt="Adega Sede Ilha do Caieiras"
+            alt="ZapFLow Logo"
             width={collapsed ? 40 : 64}
             height={collapsed ? 40 : 64}
             className="rounded-full"
           />
           {!collapsed && (
             <span className="text-xs font-semibold text-center text-gray-300 leading-tight">
-              Adega Sede Ilha do Caieiras
+              ZapFLow
             </span>
           )}
         </div>

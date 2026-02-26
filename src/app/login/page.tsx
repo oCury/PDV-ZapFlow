@@ -46,7 +46,7 @@ export default function LoginPage() {
         <div className="flex flex-col items-center gap-4">
           <Image
             src="/logo.png"
-            alt="Adega Sede Ilha do Caieiras"
+            alt="ZapFLow Logo"
             width={96}
             height={96}
             className="rounded-full"
@@ -56,7 +56,7 @@ export default function LoginPage() {
               <span className="text-brand-green">PDV</span> System
             </h1>
             <p className="text-gray-400 text-sm mt-1">
-              Adega Sede Ilha do Caieiras
+              ZapFLow
             </p>
           </div>
         </div>
