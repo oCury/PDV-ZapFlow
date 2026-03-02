@@ -13,14 +13,15 @@ enum UserRole {
 }
 
 model User {
-  id         String   @id @default(cuid())
-  name       String
-  email      String   @unique
-  password   String
-  role       UserRole @default(EMPLOYEE)
-  active     Boolean  @default(true)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  id                  String               @id @default(cuid())
+  name                String
+  email               String               @unique
+  password            String
+  role                UserRole             @default(EMPLOYEE)
+  active              Boolean              @default(true)
+  created_at          DateTime             @default(now())
+  updated_at          DateTime             @updatedAt
+  cash_register_shifts CashRegisterShift[]
 
   @@map("users")
 }
@@ -54,15 +55,61 @@ enum SaleStatus {
   APPROVED
 }
 
+model Customer {
+  id         String   @id @default(cuid())
+  name       String?
+  phone      String   @unique
+  whatsapp   String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  sales      Sale[]
+
+  @@index([phone])
+  @@map("customers")
+}
+
 model Sale {
   id             String        @id @default(cuid())
   total_amount   Decimal       @db.Decimal(10, 2)
-  payment_method PaymentMethod
+  payment_method PaymentMethod @default(CASH) // Legacy single-payment; use payments[] for multi
   status         SaleStatus    @default(PENDING)
+  customer_id    String?
   created_at     DateTime      @default(now())
   items          SaleItem[]
+  payments       SalePayment[]
+  customer       Customer?     @relation(fields: [customer_id], references: [id])
 
   @@map("sales")
+}
+
+model SalePayment {
+  id             String        @id @default(cuid())
+  sale_id        String
+  payment_method PaymentMethod
+  amount         Decimal       @db.Decimal(10, 2)
+  created_at     DateTime      @default(now())
+
+  sale Sale @relation(fields: [sale_id], references: [id], onDelete: Cascade)
+
+  @@index([sale_id])
+  @@map("sale_payments")
+}
+
+model CashRegisterShift {
+  id            String    @id @default(cuid())
+  opened_at     DateTime  @default(now())
+  closed_at     DateTime?
+  opening_cash  Decimal   @db.Decimal(10, 2)
+  closing_cash  Decimal?  @db.Decimal(10, 2)
+  withdrawals   Decimal   @db.Decimal(10, 2) @default(0)
+  user_id       String
+  status        String    @default("OPEN") // OPEN | CLOSED
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@index([user_id])
+  @@index([status])
+  @@map("cash_register_shifts")
 }
 
 model SaleItem {

@@ -1,23 +1,29 @@
 @import "tailwindcss";
 
 @theme {
-  --color-primary-dark: #303030;
-  --color-brand-green: #01f05a;
+  --color-primary-dark: #1a1d21;
+  --color-slate-800: #1e293b;
+  --color-slate-700: #334155;
+  --color-slate-600: #475569;
+  --color-slate-500: #64748b;
+  --color-slate-400: #94a3b8;
+  --color-slate-300: #cbd5e1;
+  --color-brand-green: #22c55e;
+  --color-brand-green-hover: #16a34a;
+  --color-brand-green-muted: #15803d;
   --color-pure-white: #ffffff;
+  --color-brand-green-light: #dcfce7;
 
-  --color-brand-green-hover: #00d64f;
-  --color-brand-green-light: #e6fef0;
-
-  --color-gray-50: #f9fafb;
-  --color-gray-100: #f3f4f6;
-  --color-gray-200: #e5e7eb;
-  --color-gray-300: #d1d5db;
-  --color-gray-400: #9ca3af;
-  --color-gray-500: #6b7280;
-  --color-gray-600: #4b5563;
-  --color-gray-700: #374151;
-  --color-gray-800: #1f2937;
-  --color-gray-900: #111827;
+  --color-gray-50: #f8fafc;
+  --color-gray-100: #f1f5f9;
+  --color-gray-200: #e2e8f0;
+  --color-gray-300: #cbd5e1;
+  --color-gray-400: #94a3b8;
+  --color-gray-500: #64748b;
+  --color-gray-600: #475569;
+  --color-gray-700: #334155;
+  --color-gray-800: #1e293b;
+  --color-gray-900: #0f172a;
 }
 
 body {
@@ -26,7 +32,69 @@ body {
   color: var(--color-primary-dark);
 }
 
+/* PDV touch-first dark theme (applied via .pdv-theme wrapper) */
+.pdv-theme {
+  background-color: var(--color-slate-800);
+  color: var(--color-pure-white);
+}
+
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-gray-300) transparent;
+  scrollbar-color: var(--color-slate-600) transparent;
+}
+
+/* Touch target minimum 44x44px */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* Thermal receipt print (80mm width) */
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 0;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .print-receipt,
+  .print-receipt * {
+    visibility: visible;
+  }
+
+  .print-receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 !important;
+    padding: 4mm !important;
+    font-size: 12px !important;
+    line-height: 1.3 !important;
+    background: white !important;
+    color: black !important;
+  }
+
+  .print-receipt .no-print {
+    display: none !important;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0.9;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
 }

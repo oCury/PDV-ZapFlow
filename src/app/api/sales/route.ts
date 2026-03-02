@@ -1,29 +1,41 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-
-interface SaleItemPayload {
-  productId: string;
-  quantity: number;
-  unitPrice: number;
-}
-
-interface CreateSaleBody {
-  totalAmount: number;
-  paymentMethod: "CASH" | "CARD" | "PIX";
-  items: SaleItemPayload[];
-}
+import { getSession } from "@/lib/auth";
+import { createSaleSchema } from "@/lib/validations/pos";
 
 export async function POST(req: Request) {
   try {
-    const body = (await req.json()) as CreateSaleBody;
-    const { totalAmount, paymentMethod, items } = body;
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    if (!totalAmount || !paymentMethod || !items?.length) {
+    const body = await req.json();
+
+    const parsed = createSaleSchema.safeParse({
+      totalAmount: body.totalAmount,
+      items: body.items,
+      payments: body.payments,
+      paymentMethod: body.paymentMethod,
+      customerId: body.customerId,
+    });
+
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "totalAmount, paymentMethod and items are required" },
+        { error: parsed.error.issues[0]?.message || "Invalid request" },
         { status: 400 }
       );
     }
+
+    const { totalAmount, items, payments, paymentMethod, customerId } = parsed.data;
+
+    const primaryMethod =
+      payments?.length ? payments[0].paymentMethod : (paymentMethod ?? "CASH");
+
+    const paymentList =
+      (payments?.length ?? 0) > 0
+        ? payments!
+        : [{ paymentMethod: primaryMethod, amount: totalAmount }];
 
     const sale = await prisma.$transaction(async (tx) => {
       for (const item of items) {
@@ -51,8 +63,9 @@ export async function POST(req: Request) {
       const newSale = await tx.sale.create({
         data: {
           total_amount: totalAmount,
-          payment_method: paymentMethod,
+          payment_method: primaryMethod,
           status: "APPROVED",
+          customer_id: customerId ?? null,
           items: {
             create: items.map((item) => ({
               product_id: item.productId,
@@ -63,6 +76,16 @@ export async function POST(req: Request) {
         },
         include: { items: true },
       });
+
+      if (paymentList.length > 0) {
+        await tx.salePayment.createMany({
+          data: paymentList.map((p) => ({
+            sale_id: newSale.id,
+            payment_method: p.paymentMethod,
+            amount: p.amount,
+          })),
+        });
+      }
 
       return newSale;
     });
@@ -76,15 +99,15 @@ export async function POST(req: Request) {
       },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Sale creation failed:", error);
 
+    const message = error instanceof Error ? error.message : "Erro interno ao processar venda.";
     const isStockError =
-      error.message?.includes("Estoque insuficiente") ||
-      error.message?.includes("Produto não encontrado");
+      message.includes("Estoque insuficiente") || message.includes("Produto não encontrado");
 
     return NextResponse.json(
-      { error: error.message || "Erro interno ao processar venda." },
+      { error: message },
       { status: isStockError ? 400 : 500 }
     );
   }

@@ -8,7 +8,7 @@ import {
   XCircle,
   CircleDollarSign,
 } from "lucide-react";
-import { CartItem } from "@/app/pdv/page";
+import type { CartItem } from "@/lib/validations/pos";
 
 interface PaymentModalProps {
   isOpen: boolean;

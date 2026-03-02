@@ -3,34 +3,29 @@
 import { useState, useCallback, useRef } from "react";
 import {
   ShoppingCart,
-  Trash2,
-  CreditCard,
-  Banknote,
-  QrCode,
   ScanBarcode,
   Loader2,
   KeyboardIcon,
+  Wallet,
 } from "lucide-react";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { useProducts, type Product } from "@/hooks/useProducts";
-import { PaymentModal } from "@/components/payment-modal";
-import { PosProductGrid } from "@/components/pos-product-grid";
+import { MultiPaymentModal } from "@/components/pos/multi-payment-modal";
+import { PosProductGrid } from "@/components/pos/pos-product-grid";
+import { CartSidebar } from "@/components/pos/cart-sidebar";
+import { CartBottomSheet } from "@/components/pos/cart-bottom-sheet";
+import { CashRegisterDrawer } from "@/components/pos/cash-register-drawer";
 import { ProductModal } from "@/components/product-modal";
-
-export interface CartItem {
-  id: string;
-  name: string;
-  quantity: number;
-  unit_price: number;
-}
+import type { CartItem } from "@/lib/validations/pos";
 
 export default function PdvPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
   const [scanStatus, setScanStatus] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [isCartSheetOpen, setIsCartSheetOpen] = useState(false);
+  const [isCashRegisterOpen, setIsCashRegisterOpen] = useState(false);
   const [manualBarcode, setManualBarcode] = useState("");
   const manualInputRef = useRef<HTMLInputElement>(null);
 
@@ -123,30 +118,62 @@ export default function PdvPage() {
     manualInputRef.current?.focus();
   };
 
-  const removeFromCart = (id: string) => {
-    setCart(cart.filter((item) => item.id !== id));
+  const updateQuantity = useCallback((id: string, quantity: number) => {
+    setCart((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, quantity: Math.max(1, quantity) } : item
+      )
+    );
+  }, []);
+
+  const updatePrice = useCallback((id: string, unitPrice: number) => {
+    setCart((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, unit_price: unitPrice } : item
+      )
+    );
+  }, []);
+
+  const removeFromCart = useCallback((id: string) => {
+    setCart((prev) => prev.filter((item) => item.id !== id));
+  }, []);
+
+  const handleFinishSale = () => {
+    setIsPaymentModalOpen(true);
+    setIsCartSheetOpen(false);
   };
 
   const handlePaymentSuccess = useCallback(() => {
     setCart([]);
-    setPaymentMethod(null);
     setIsPaymentModalOpen(false);
     refetch();
   }, [refetch]);
 
   return (
-    <div className="flex gap-6 h-[calc(100vh-3rem)]">
+    <div className="pdv-theme -m-6 p-6 min-h-[calc(100vh-3rem)] rounded-none">
+      <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-4.5rem)] min-h-0">
+      {/* Left: Product Grid */}
       <div className="flex-1 flex flex-col min-h-0">
-        <div className="shrink-0">
-          <h1 className="text-2xl font-bold text-primary-dark">PDV</h1>
-          <p className="text-gray-500 text-sm mt-1">Ponto de Venda</p>
+        <div className="flex items-center justify-between shrink-0">
+          <div>
+            <h1 className="text-2xl font-bold text-white">PDV</h1>
+            <p className="text-slate-400 text-sm mt-0.5">Ponto de Venda</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsCashRegisterOpen(true)}
+            className="touch-target min-h-[48px] min-w-[48px] flex items-center justify-center rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300"
+            title="Caixa"
+          >
+            <Wallet size={22} />
+          </button>
         </div>
 
         {/* Manual Barcode Entry */}
-        <div className="shrink-0 mt-4 bg-pure-white rounded-2xl p-4 shadow-sm border border-gray-200">
+        <div className="shrink-0 mt-4 p-4 rounded-2xl bg-slate-700/50 border border-slate-600/50">
           <div className="flex items-center gap-2 mb-3">
             <KeyboardIcon size={18} className="text-brand-green" />
-            <span className="text-sm font-semibold text-primary-dark">
+            <span className="text-sm font-semibold text-slate-200">
               Entrada Manual de Código
             </span>
           </div>
@@ -163,16 +190,16 @@ export default function PdvPage() {
                 }
               }}
               placeholder="Digite o código de barras e pressione Enter..."
-              className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-lg font-mono focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
+              className="flex-1 min-h-[48px] px-4 py-3 rounded-xl bg-slate-800 border border-slate-600 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-green/50 font-mono text-lg"
               autoFocus
             />
             <button
+              type="button"
               onClick={handleManualSubmit}
               disabled={!manualBarcode.trim() || isSearching}
-              className="bg-brand-green hover:bg-brand-green-hover disabled:bg-gray-300 disabled:cursor-not-allowed text-primary-dark font-semibold px-6 py-3 rounded-xl transition-colors duration-200 flex items-center gap-2"
+              className="touch-target min-h-[48px] min-w-[48px] flex items-center justify-center bg-brand-green hover:bg-brand-green-hover disabled:bg-slate-600 disabled:cursor-not-allowed text-primary-dark font-semibold rounded-xl transition-colors"
             >
-              <ScanBarcode size={18} />
-              Buscar
+              <ScanBarcode size={20} />
             </button>
           </div>
         </div>
@@ -180,25 +207,25 @@ export default function PdvPage() {
         {/* Scan Status */}
         {(scanStatus || isSearching) && (
           <div
-            className={`shrink-0 mt-3 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium ${
+            className={`shrink-0 mt-3 flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium min-h-[44px] ${
               isSearching
-                ? "bg-blue-50 text-blue-700"
+                ? "bg-blue-500/20 text-blue-300"
                 : scanStatus?.startsWith("✓")
-                  ? "bg-green-50 text-green-700"
-                  : "bg-red-50 text-red-700"
+                  ? "bg-brand-green/20 text-brand-green"
+                  : "bg-red-500/20 text-red-300"
             }`}
           >
             {isSearching ? (
-              <Loader2 size={16} className="animate-spin" />
+              <Loader2 size={18} className="animate-spin" />
             ) : (
-              <ScanBarcode size={16} />
+              <ScanBarcode size={18} />
             )}
             {isSearching ? "Buscando produto..." : scanStatus}
           </div>
         )}
 
         {/* Product Grid */}
-        <div className="flex-1 mt-4 overflow-y-auto">
+        <div className="flex-1 mt-4 overflow-y-auto min-h-0">
           <PosProductGrid
             products={products}
             loading={loading}
@@ -209,97 +236,57 @@ export default function PdvPage() {
         </div>
       </div>
 
-      {/* Cart Sidebar */}
-      <div className="w-96 shrink-0 bg-pure-white rounded-2xl shadow-sm border border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <ShoppingCart size={20} className="text-brand-green" />
-            <h2 className="font-semibold text-primary-dark">Carrinho</h2>
-            <span className="ml-auto bg-brand-green/10 text-brand-green text-xs font-bold px-2 py-0.5 rounded-full">
-              {cart.length} itens
-            </span>
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4 space-y-2">
-          {cart.length === 0 ? (
-            <div className="text-center py-12 text-gray-400">
-              <ShoppingCart size={40} className="mx-auto mb-2 text-gray-300" />
-              <p className="text-sm">Carrinho vazio</p>
-            </div>
-          ) : (
-            cart.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center gap-3 p-3 rounded-xl bg-gray-50"
-              >
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-primary-dark">
-                    {item.name}
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    {item.quantity}x R$ {item.unit_price.toFixed(2)}
-                  </p>
-                </div>
-                <p className="text-sm font-bold text-brand-green">
-                  R$ {(item.quantity * item.unit_price).toFixed(2)}
-                </p>
-                <button
-                  onClick={() => removeFromCart(item.id)}
-                  className="text-gray-400 hover:text-red-500 transition-colors"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            ))
-          )}
-        </div>
-
-        <div className="p-4 border-t border-gray-100 space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-gray-500 font-medium">Total</span>
-            <span className="text-2xl font-bold text-primary-dark">
-              R$ {total.toFixed(2)}
-            </span>
-          </div>
-
-          <div className="flex gap-2">
-            {[
-              { key: "CASH", icon: Banknote, label: "Dinheiro" },
-              { key: "CARD", icon: CreditCard, label: "Cartão" },
-              { key: "PIX", icon: QrCode, label: "PIX" },
-            ].map((method) => (
-              <button
-                key={method.key}
-                onClick={() => setPaymentMethod(method.key)}
-                className={`flex-1 flex flex-col items-center gap-1 py-2.5 rounded-xl text-xs font-medium transition-colors ${
-                  paymentMethod === method.key
-                    ? "bg-brand-green text-primary-dark"
-                    : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                }`}
-              >
-                <method.icon size={18} />
-                {method.label}
-              </button>
-            ))}
-          </div>
-
-          <button
-            disabled={cart.length === 0 || !paymentMethod}
-            onClick={() => setIsPaymentModalOpen(true)}
-            className="w-full bg-brand-green hover:bg-brand-green-hover disabled:bg-gray-300 disabled:cursor-not-allowed text-primary-dark font-bold py-3 rounded-xl transition-colors duration-200 text-sm"
-          >
-            Finalizar Venda
-          </button>
-        </div>
+      {/* Right: Cart Sidebar (Desktop) */}
+      <div className="hidden lg:flex lg:w-[400px] xl:w-[420px] shrink-0">
+        <CartSidebar
+          cart={cart}
+          total={total}
+          onQuantityChange={updateQuantity}
+          onPriceOverride={updatePrice}
+          onRemove={removeFromCart}
+          onFinishSale={handleFinishSale}
+          allowPriceOverride
+        />
       </div>
 
-      <PaymentModal
+      {/* Mobile: Floating Cart Button */}
+      <button
+        type="button"
+        onClick={() => setIsCartSheetOpen(true)}
+        className="lg:hidden fixed bottom-6 right-6 z-30 touch-target min-h-[56px] min-w-[56px] flex items-center justify-center rounded-full bg-brand-green hover:bg-brand-green-hover text-primary-dark shadow-lg"
+      >
+        <ShoppingCart size={28} />
+        {cart.length > 0 && (
+          <span className="absolute -top-1 -right-1 min-w-[22px] h-[22px] flex items-center justify-center rounded-full bg-primary-dark text-brand-green text-xs font-bold">
+            {cart.length}
+          </span>
+        )}
+      </button>
+
+      {/* Mobile: Cart Bottom Sheet */}
+      <CartBottomSheet
+        isOpen={isCartSheetOpen}
+        onClose={() => setIsCartSheetOpen(false)}
+        cart={cart}
+        total={total}
+        onQuantityChange={updateQuantity}
+        onPriceOverride={updatePrice}
+        onRemove={removeFromCart}
+        onFinishSale={handleFinishSale}
+        allowPriceOverride
+      />
+
+      <MultiPaymentModal
         isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
         totalAmount={total}
         cartItems={cart}
         onPaymentSuccess={handlePaymentSuccess}
+      />
+
+      <CashRegisterDrawer
+        isOpen={isCashRegisterOpen}
+        onClose={() => setIsCashRegisterOpen(false)}
       />
 
       <ProductModal
@@ -310,6 +297,7 @@ export default function PdvPage() {
           setIsProductModalOpen(false);
         }}
       />
+    </div>
     </div>
   );
 }
