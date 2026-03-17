@@ -13,18 +13,20 @@ enum UserRole {
 }
 
 model User {
-  id                  String               @id @default(cuid())
-  name                String
-  email               String               @unique
-  password            String
-  role                UserRole             @default(EMPLOYEE)
-  active              Boolean              @default(true)
-  created_at          DateTime             @default(now())
-  updated_at          DateTime             @updatedAt
+  id                   String               @id @default(cuid())
+  name                 String
+  email                String               @unique
+  password             String
+  role                 UserRole             @default(EMPLOYEE)
+  active               Boolean              @default(true)
+  created_at           DateTime             @default(now())
+  updated_at           DateTime             @updatedAt
   cash_register_shifts CashRegisterShift[]
 
   @@map("users")
 }
+
+// ─── Product ────────────────────────────────────────────────────────────────
 
 model Product {
   id             String     @id @default(cuid())
@@ -33,6 +35,7 @@ model Product {
   cost_price     Decimal    @db.Decimal(10, 2)
   sell_price     Decimal    @db.Decimal(10, 2)
   stock_quantity Int        @default(0)
+  min_stock      Int        @default(0)   // M2: alert threshold
   category       String
   image_url      String?
   created_at     DateTime   @default(now())
@@ -44,41 +47,78 @@ model Product {
   @@map("products")
 }
 
+// ─── Payment / Sale enums ───────────────────────────────────────────────────
+
 enum PaymentMethod {
   CASH
   CARD
   PIX
+  LOYALTY // M3: loyalty points as payment
 }
 
 enum SaleStatus {
-  PENDING
-  APPROVED
+  OPEN      // M5: table/command order being built
+  PENDING   // payment pending
+  APPROVED  // legacy completed sale
+  COMPLETED // M5: explicitly finished
+  CANCELLED // M5: cancelled order
 }
 
+// ─── Customer (CRM) ─────────────────────────────────────────────────────────
+
 model Customer {
+  id             String   @id @default(cuid())
+  name           String?
+  email          String?  @unique  // M3
+  phone          String   @unique
+  whatsapp       String?
+  cpf            String?  @unique  // M3: Brazilian CPF
+  loyalty_points Int      @default(0) // M3: 1 BRL = 1 point
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+  sales          Sale[]
+
+  @@index([phone])
+  @@index([cpf])
+  @@map("customers")
+}
+
+// ─── Table (M5) ─────────────────────────────────────────────────────────────
+
+model Table {
   id         String   @id @default(cuid())
-  name       String?
-  phone      String   @unique
-  whatsapp   String?
+  number     Int      @unique
+  name       String?  // e.g. "Mesa Terraço"
+  capacity   Int      @default(4)
+  whatsapp   String?  // WhatsApp para avisos e cobrança
+  status     String   @default("AVAILABLE") // AVAILABLE | OCCUPIED
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
   sales      Sale[]
 
-  @@index([phone])
-  @@map("customers")
+  @@index([status])
+  @@map("tables")
 }
 
-model Sale {
-  id             String        @id @default(cuid())
-  total_amount   Decimal       @db.Decimal(10, 2)
-  payment_method PaymentMethod @default(CASH) // Legacy single-payment; use payments[] for multi
-  status         SaleStatus    @default(PENDING)
-  customer_id    String?
-  created_at     DateTime      @default(now())
-  items          SaleItem[]
-  payments       SalePayment[]
-  customer       Customer?     @relation(fields: [customer_id], references: [id])
+// ─── Sale ────────────────────────────────────────────────────────────────────
 
+model Sale {
+  id               String        @id @default(cuid())
+  total_amount     Decimal       @db.Decimal(10, 2)
+  payment_method   PaymentMethod @default(CASH)
+  status           SaleStatus    @default(PENDING)
+  customer_id      String?
+  table_id         String?       // M5
+  loyalty_discount Decimal?      @db.Decimal(10, 2) // M3: points used as discount
+  notes            String?       // M5: order notes
+  created_at       DateTime      @default(now())
+  items            SaleItem[]
+  payments         SalePayment[]
+  customer         Customer?     @relation(fields: [customer_id], references: [id])
+  table            Table?        @relation(fields: [table_id], references: [id]) // M5
+
+  @@index([table_id])
+  @@index([status])
   @@map("sales")
 }
 
@@ -96,14 +136,14 @@ model SalePayment {
 }
 
 model CashRegisterShift {
-  id            String    @id @default(cuid())
-  opened_at     DateTime  @default(now())
-  closed_at     DateTime?
-  opening_cash  Decimal   @db.Decimal(10, 2)
-  closing_cash  Decimal?  @db.Decimal(10, 2)
-  withdrawals   Decimal   @db.Decimal(10, 2) @default(0)
-  user_id       String
-  status        String    @default("OPEN") // OPEN | CLOSED
+  id           String    @id @default(cuid())
+  opened_at    DateTime  @default(now())
+  closed_at    DateTime?
+  opening_cash Decimal   @db.Decimal(10, 2)
+  closing_cash Decimal?  @db.Decimal(10, 2)
+  withdrawals  Decimal   @default(0) @db.Decimal(10, 2)
+  user_id      String
+  status       String    @default("OPEN") // OPEN | CLOSED
 
   user User @relation(fields: [user_id], references: [id])
 

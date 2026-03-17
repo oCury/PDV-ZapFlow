@@ -64,21 +64,21 @@ export default function SalesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-500">
+      <div className="flex items-center justify-center h-full text-slate-400">
         <Loader2 className="animate-spin mr-2" size={24} /> Carregando dados...
       </div>
     );
   }
 
   if (error) {
-    return <div className="text-red-500 p-4">{error}</div>;
+    return <div className="text-red-400 p-4">{error}</div>;
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-primary-dark">Dashboard de Vendas</h1>
-        <p className="text-gray-500 text-sm mt-1">Visão geral das métricas e desempenho de vendas.</p>
+        <h1 className="text-2xl font-bold text-slate-100">Dashboard de Vendas</h1>
+        <p className="text-slate-400 text-sm mt-1">Visão geral das métricas e desempenho de vendas.</p>
       </div>
 
       {/* Key Metrics */}
@@ -89,36 +89,39 @@ export default function SalesPage() {
       </div>
 
       {/* Sales by Category Chart */}
-      <div className="bg-pure-white rounded-2xl p-6 shadow-sm border border-gray-200">
-        <h2 className="text-xl font-semibold text-primary-dark mb-4">Vendas por Categoria</h2>
+      <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
+        <h2 className="text-xl font-semibold text-slate-100 mb-4">Vendas por Categoria</h2>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={categorySales}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-            <XAxis dataKey="name" stroke="#333" />
-            <YAxis stroke="#333" />
-            <Tooltip formatter={(value) => (typeof value === 'number' ? `${value} un.` : value)} />
-            <Bar dataKey="sales" fill="#01f05a" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+            <XAxis dataKey="name" stroke="#94a3b8" />
+            <YAxis stroke="#94a3b8" />
+            <Tooltip
+              contentStyle={{ backgroundColor: "#1e293b", border: "1px solid #334155", borderRadius: "8px", color: "#f1f5f9" }}
+              formatter={(value) => (typeof value === 'number' ? `${value} un.` : value)}
+            />
+            <Bar dataKey="sales" fill="#22c55e" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
 
       {/* Top Sellers */}
-      <div className="bg-pure-white rounded-2xl p-6 shadow-sm border border-gray-200">
-        <h2 className="text-xl font-semibold text-primary-dark mb-4">Top 5 Produtos Mais Vendidos</h2>
+      <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
+        <h2 className="text-xl font-semibold text-slate-100 mb-4">Top 5 Produtos Mais Vendidos</h2>
         <div className="space-y-3">
           {topSellers.length === 0 ? (
-            <p className="text-gray-500 text-sm">Nenhum produto vendido ainda.</p>
+            <p className="text-slate-500 text-sm">Nenhum produto vendido ainda.</p>
           ) : (
             topSellers.map((product, index) => (
-              <div key={index} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+              <div key={index} className="flex items-center gap-3 p-3 bg-slate-700/50 rounded-xl">
                 <img
-                  src={product.image_url || "/placeholder-product.png"} // TODO: Add a generic placeholder image
+                  src={product.image_url || "/placeholder-product.png"}
                   alt={product.name}
-                  className="w-12 h-12 object-cover rounded-md border border-gray-200"
+                  className="w-12 h-12 object-cover rounded-lg border border-slate-600"
                 />
                 <div className="flex-1">
-                  <p className="font-medium text-primary-dark">{product.name}</p>
-                  <p className="text-sm text-gray-500">{product.totalSold} unidades vendidas</p>
+                  <p className="font-medium text-slate-200">{product.name}</p>
+                  <p className="text-sm text-slate-500">{product.totalSold} unidades vendidas</p>
                 </div>
               </div>
             ))
@@ -136,8 +139,8 @@ interface MetricCardProps {
 
 function MetricCard({ title, value }: MetricCardProps) {
   return (
-    <div className="bg-pure-white rounded-2xl p-6 shadow-sm border border-gray-200 flex flex-col items-start">
-      <div className="flex items-center gap-2 text-gray-500 mb-2">
+    <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 flex flex-col items-start">
+      <div className="flex items-center gap-2 text-slate-400 mb-2">
         <DollarSign size={20} />
         <span className="text-sm font-medium">{title}</span>
       </div>

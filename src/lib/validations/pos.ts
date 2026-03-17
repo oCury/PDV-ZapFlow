@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+// ─── Cart ────────────────────────────────────────────────────────────────────
+
 export const cartItemSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -13,19 +15,26 @@ export const saleItemPayloadSchema = z.object({
   unitPrice: z.number().nonnegative(),
 });
 
+// ─── Payments ────────────────────────────────────────────────────────────────
+
 export const paymentSplitSchema = z.object({
-  paymentMethod: z.enum(["CASH", "CARD", "PIX"]),
+  paymentMethod: z.enum(["CASH", "CARD", "PIX", "LOYALTY"]),
   amount: z.number().positive(),
 });
+
+// ─── Sale ────────────────────────────────────────────────────────────────────
 
 export const createSaleSchema = z
   .object({
     totalAmount: z.number().positive(),
     items: z.array(saleItemPayloadSchema).min(1),
     payments: z.array(paymentSplitSchema).optional(),
-    paymentMethod: z.enum(["CASH", "CARD", "PIX"]).optional(),
+    paymentMethod: z.enum(["CASH", "CARD", "PIX", "LOYALTY"]).optional(),
     customerId: z.string().optional(),
     customerPhone: z.string().optional(),
+    tableId: z.string().optional(),         // M5: table/command
+    loyaltyDiscount: z.number().nonnegative().optional(), // M3: points discount
+    notes: z.string().max(500).optional(),  // M5: order notes
   })
   .refine(
     (data) => data.payments?.length || data.paymentMethod,
@@ -48,9 +57,57 @@ export const createIntentSchema = z.object({
   items: z.array(saleItemPayloadSchema).min(1),
 });
 
+// ─── Customer (M3) ───────────────────────────────────────────────────────────
+
+/**
+ * Validates a Brazilian CPF (Cadastro de Pessoas Físicas).
+ * Checks the format and the two check digits using the standard algorithm.
+ */
+function validateCPF(raw: string): boolean {
+  const cpf = raw.replace(/\D/g, "");
+  if (cpf.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(cpf)) return false; // all same digits
+
+  const calc = (end: number) => {
+    let sum = 0;
+    for (let i = 0; i < end; i++) {
+      sum += parseInt(cpf[i]) * (end + 1 - i);
+    }
+    const remainder = (sum * 10) % 11;
+    return remainder === 10 ? 0 : remainder;
+  };
+
+  return calc(9) === parseInt(cpf[9]) && calc(10) === parseInt(cpf[10]);
+}
+
+export const cpfSchema = z
+  .string()
+  .min(11, "CPF deve ter 11 dígitos")
+  .refine((v) => validateCPF(v), { message: "CPF inválido" });
+
 export const customerSearchSchema = z.object({
-  phone: z.string().min(10).max(20),
+  phone: z.string().min(10).max(20).optional(),
+  cpf: cpfSchema.optional(),
+}).refine((d) => d.phone || d.cpf, {
+  message: "Informe telefone ou CPF para buscar",
 });
+
+export const upsertCustomerSchema = z.object({
+  name: z.string().min(1).max(120).optional(),
+  phone: z.string().min(10).max(20),
+  email: z.string().email().optional().or(z.literal("")),
+  whatsapp: z.string().min(10).max(20).optional(),
+  cpf: cpfSchema.optional(),
+});
+
+// ─── Inventory (M2) ──────────────────────────────────────────────────────────
+
+export const updateStockThresholdSchema = z.object({
+  productId: z.string().min(1),
+  minStock: z.number().int().nonnegative(),
+});
+
+// ─── Cash Register ───────────────────────────────────────────────────────────
 
 export const openShiftSchema = z.object({
   openingCash: z.number().nonnegative(),
@@ -67,6 +124,27 @@ export const withdrawalSchema = z.object({
   reason: z.string().optional(),
 });
 
+// ─── Tables (M5) ─────────────────────────────────────────────────────────────
+
+export const createTableSchema = z.object({
+  number: z.number().int().positive(),
+  name: z.string().max(60).optional(),
+  capacity: z.number().int().positive().default(4),
+  whatsapp: z.string().max(20).optional(),
+});
+
+export const openOrderSchema = z.object({
+  tableId: z.string().min(1),
+  items: z.array(saleItemPayloadSchema).min(1),
+  /** Required for table orders — used to charge if customer leaves without paying */
+  customerPhone: z.string().min(10, "Telefone obrigatório (mín. 10 dígitos)"),
+  customerId: z.string().optional(), // if found via search
+  notes: z.string().max(500).optional(),
+});
+
+// ─── Exports ─────────────────────────────────────────────────────────────────
+
 export type CartItem = z.infer<typeof cartItemSchema>;
 export type SaleItemPayload = z.infer<typeof saleItemPayloadSchema>;
 export type PaymentSplit = z.infer<typeof paymentSplitSchema>;
+export type UpsertCustomer = z.infer<typeof upsertCustomerSchema>;

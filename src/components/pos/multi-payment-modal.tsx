@@ -14,6 +14,7 @@ import {
   Phone,
   Search,
   Printer,
+  X,
 } from "lucide-react";
 import type { CartItem } from "@/lib/validations/pos";
 import type { PaymentSplit } from "@/lib/validations/pos";
@@ -437,19 +438,29 @@ export function MultiPaymentModal({
               <p className="text-red-400 text-sm">{errorMessage}</p>
             )}
 
-            <button
-              type="button"
-              onClick={handleConfirmPayment}
-              disabled={
-                payments.length === 0 ||
-                (payments.length === 1 &&
-                  payments[0].paymentMethod === "CASH" &&
-                  (parseFloat(amountReceived) || 0) < totalAmount)
-              }
-              className="w-full touch-target min-h-[56px] bg-brand-green hover:bg-brand-green-hover disabled:bg-slate-600 disabled:text-slate-400 disabled:cursor-not-allowed text-primary-dark font-bold text-lg rounded-xl transition-colors"
-            >
-              {payments.length > 1 ? "Pagar" : `Pagar com ${payments[0] ? PAYMENT_METHODS.find((m) => m.key === payments[0].paymentMethod)?.label : "..."}`}
-            </button>
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={handleConfirmPayment}
+                disabled={
+                  payments.length === 0 ||
+                  (payments.length === 1 &&
+                    payments[0].paymentMethod === "CASH" &&
+                    (parseFloat(amountReceived) || 0) < totalAmount)
+                }
+                className="w-full touch-target min-h-[56px] bg-brand-green hover:bg-brand-green-hover disabled:bg-slate-600 disabled:text-slate-400 disabled:cursor-not-allowed text-primary-dark font-bold text-lg rounded-xl transition-colors"
+              >
+                {payments.length > 1 ? "Pagar" : `Pagar com ${payments[0] ? PAYMENT_METHODS.find((m) => m.key === payments[0].paymentMethod)?.label : "..."}`}
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full touch-target min-h-[48px] flex items-center justify-center gap-2 rounded-xl border-2 border-slate-600 text-slate-300 hover:border-slate-500 hover:text-slate-200 font-semibold transition-colors"
+              >
+                <X size={18} />
+                Sair do Pagamento
+              </button>
+            </div>
           </div>
         );
 
@@ -521,16 +532,26 @@ export function MultiPaymentModal({
             <p className="text-slate-300">
               {errorMessage || "Tente novamente ou escolha outro método."}
             </p>
-            <button
-              type="button"
-              onClick={() => {
-                setPaymentStatus("IDLE");
-                setErrorMessage(null);
-              }}
-              className="mt-8 touch-target min-h-[52px] px-8 bg-white text-red-700 hover:bg-gray-100 font-bold rounded-xl transition-colors"
-            >
-              Tentar Novamente
-            </button>
+            <div className="flex flex-col sm:flex-row gap-3 mt-8">
+              <button
+                type="button"
+                onClick={() => {
+                  setPaymentStatus("IDLE");
+                  setErrorMessage(null);
+                }}
+                className="touch-target min-h-[52px] px-8 bg-white text-red-700 hover:bg-gray-100 font-bold rounded-xl transition-colors"
+              >
+                Tentar Novamente
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="touch-target min-h-[52px] px-8 flex items-center justify-center gap-2 rounded-xl border-2 border-slate-600 text-slate-300 hover:border-slate-500 hover:text-slate-200 font-semibold transition-colors"
+              >
+                <X size={18} />
+                Sair
+              </button>
+            </div>
           </div>
         );
 
@@ -539,9 +560,24 @@ export function MultiPaymentModal({
     }
   };
 
+  const canClose = paymentStatus === "IDLE" || paymentStatus === "FAILED" || paymentStatus === "SUCCESS";
+
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-800 rounded-3xl shadow-2xl p-8 w-full max-w-lg border border-slate-600">
+    <div
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60] p-4"
+      style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom, 0px))" }}
+    >
+      <div className="relative bg-slate-800 rounded-3xl shadow-2xl p-6 sm:p-8 w-full max-w-lg border border-slate-600 max-h-[90vh] overflow-y-auto">
+        {canClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute top-4 right-4 touch-target min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-700 transition-colors"
+            title="Sair do pagamento"
+          >
+            <X size={22} />
+          </button>
+        )}
         {renderContent()}
       </div>
     </div>

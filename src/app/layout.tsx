@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { AppShell } from "@/components/app-shell";
+import { Providers } from "@/components/providers";
 import "./globals.css";
 
 const inter = Inter({
@@ -9,8 +10,18 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "PDV System",
-  description: "Sistema de Ponto de Venda",
+  title: "PDV ZapFlow",
+  description: "Sistema de Ponto de Venda — ZapFlow",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "PDV ZapFlow",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+    "theme-color": "#22c55e",
+  },
 };
 
 export default function RootLayout({
@@ -21,7 +32,9 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
-        <AppShell>{children}</AppShell>
+        <Providers>
+          <AppShell>{children}</AppShell>
+        </Providers>
       </body>
     </html>
   );

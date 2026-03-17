@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { CriticalStockWidget } from "@/components/critical-stock-widget";
 import {
   ShoppingCart,
   Package,
@@ -32,10 +33,10 @@ interface LatestSale {
 
 const REFRESH_INTERVAL_MS = 30_000;
 
-const paymentMethodConfig = {
-  CASH: { label: "Dinheiro", icon: Banknote, color: "text-green-600 bg-green-50" },
-  CARD: { label: "Cartão", icon: CreditCard, color: "text-blue-600 bg-blue-50" },
-  PIX: { label: "PIX", icon: QrCode, color: "text-purple-600 bg-purple-50" },
+  const paymentMethodConfig = {
+  CASH: { label: "Dinheiro", icon: Banknote, color: "text-green-400 bg-green-500/20" },
+  CARD: { label: "Cartão", icon: CreditCard, color: "text-blue-400 bg-blue-500/20" },
+  PIX: { label: "PIX", icon: QrCode, color: "text-purple-400 bg-purple-500/20" },
 };
 
 export default function DashboardPage() {
@@ -65,7 +66,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-500">
+      <div className="flex items-center justify-center h-full text-slate-400">
         <Loader2 className="animate-spin mr-2" size={24} />
         Carregando dashboard...
       </div>
@@ -73,7 +74,7 @@ export default function DashboardPage() {
   }
 
   if (error || !data) {
-    return <div className="text-red-500 p-4">{error}</div>;
+    return <div className="text-red-400 p-4">{error}</div>;
   }
 
   const stats = [
@@ -110,8 +111,8 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-primary-dark">Dashboard</h1>
-        <p className="text-gray-500 text-sm mt-1">
+        <h1 className="text-2xl font-bold text-slate-100">Dashboard</h1>
+        <p className="text-slate-400 text-sm mt-1">
           Visão geral do seu ponto de venda
         </p>
       </div>
@@ -120,32 +121,35 @@ export default function DashboardPage() {
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className="bg-pure-white rounded-2xl p-5 shadow-sm border border-gray-200"
+            className="bg-slate-800 rounded-2xl p-5 border border-slate-700"
           >
             <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500 font-medium">{stat.label}</p>
+              <p className="text-sm text-slate-400 font-medium">{stat.label}</p>
               <div className="bg-brand-green/10 p-2 rounded-xl">
                 <stat.icon size={20} className="text-brand-green" />
               </div>
             </div>
             <p
               className={`text-2xl font-bold mt-2 ${
-                stat.highlight ? "text-brand-green" : "text-primary-dark"
+                stat.highlight ? "text-brand-green" : "text-slate-100"
               }`}
             >
               {stat.value}
             </p>
-            <p className="text-xs text-gray-400 mt-1">{stat.change} vs. ontem</p>
+            <p className="text-xs text-slate-500 mt-1">{stat.change} vs. ontem</p>
           </div>
         ))}
       </div>
 
-      <div className="bg-pure-white rounded-2xl p-6 shadow-sm border border-gray-200">
-        <h2 className="font-semibold text-primary-dark mb-4">Últimas Vendas</h2>
+      {/* M2 — Critical Stock Alerts */}
+      <CriticalStockWidget />
+
+      <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700">
+        <h2 className="font-semibold text-slate-100 mb-4">Últimas Vendas</h2>
 
         {data.latestSales.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
-            <ShoppingCart size={48} className="mx-auto mb-3 text-gray-300" />
+          <div className="text-center py-12 text-slate-500">
+            <ShoppingCart size={48} className="mx-auto mb-3 text-slate-600" />
             <p className="font-medium">Nenhuma venda registrada</p>
             <p className="text-sm mt-1">
               As vendas aparecerão aqui quando forem realizadas
@@ -169,17 +173,17 @@ export default function DashboardPage() {
               return (
                 <div
                   key={sale.id}
-                  className="flex items-center gap-4 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors"
+                  className="flex items-center gap-4 p-3 rounded-xl bg-slate-700/50 hover:bg-slate-700 transition-colors"
                 >
                   <div className={`p-2 rounded-xl ${method.color}`}>
                     <MethodIcon size={18} />
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-primary-dark">
+                    <p className="text-sm font-medium text-slate-200">
                       {method.label}
                     </p>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-slate-500">
                       {sale.itemCount} {sale.itemCount === 1 ? "item" : "itens"}
                     </p>
                   </div>
@@ -188,7 +192,7 @@ export default function DashboardPage() {
                     <p className="text-sm font-bold text-brand-green">
                       R$ {sale.totalAmount.toFixed(2)}
                     </p>
-                    <p className="text-xs text-gray-400 flex items-center justify-end gap-1">
+                    <p className="text-xs text-slate-500 flex items-center justify-end gap-1">
                       <Clock size={10} />
                       {dateStr} {timeStr}
                     </p>

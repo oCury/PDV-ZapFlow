@@ -102,12 +102,14 @@ export default function StaffPage() {
     setNewPassword("");
   };
 
+  const inputCls = "w-full px-4 py-2.5 rounded-xl border border-slate-600 bg-slate-700 text-slate-200 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all";
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-primary-dark">Equipe</h1>
-          <p className="text-gray-500 text-sm mt-1">
+          <h1 className="text-2xl font-bold text-slate-100">Equipe</h1>
+          <p className="text-slate-400 text-sm mt-1">
             Gerencie os usuários do sistema
           </p>
         </div>
@@ -124,13 +126,13 @@ export default function StaffPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20 text-gray-400">
+        <div className="flex items-center justify-center py-20 text-slate-500">
           <Loader2 size={24} className="animate-spin mr-2" />
           Carregando equipe...
         </div>
       ) : users.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <Users size={48} className="mx-auto mb-3 text-gray-300" />
+        <div className="text-center py-16 text-slate-500">
+          <Users size={48} className="mx-auto mb-3 text-slate-600" />
           <p className="font-medium">Nenhum membro cadastrado</p>
         </div>
       ) : (
@@ -138,7 +140,7 @@ export default function StaffPage() {
           {users.map((u) => (
             <div
               key={u.id}
-              className={`bg-pure-white rounded-2xl p-5 shadow-sm border border-gray-200 flex items-center gap-4 ${
+              className={`bg-slate-800 rounded-2xl p-5 border border-slate-700 flex items-center gap-4 ${
                 !u.active ? "opacity-60" : ""
               }`}
             >
@@ -146,35 +148,35 @@ export default function StaffPage() {
                 className={`p-2.5 rounded-xl ${
                   u.role === "ADMIN"
                     ? "bg-brand-green/10"
-                    : "bg-blue-50"
+                    : "bg-blue-500/20"
                 }`}
               >
                 {u.role === "ADMIN" ? (
                   <ShieldCheck size={22} className="text-brand-green" />
                 ) : (
-                  <Shield size={22} className="text-blue-500" />
+                  <Shield size={22} className="text-blue-400" />
                 )}
               </div>
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="font-semibold text-primary-dark">{u.name}</p>
+                  <p className="font-semibold text-slate-100">{u.name}</p>
                   <span
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                       u.role === "ADMIN"
                         ? "bg-brand-green/20 text-brand-green"
-                        : "bg-blue-100 text-blue-600"
+                        : "bg-blue-500/20 text-blue-400"
                     }`}
                   >
                     {u.role === "ADMIN" ? "Admin" : "Funcionário"}
                   </span>
                   {!u.active && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-500">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/20 text-red-400">
                       Inativo
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-gray-400">{u.email}</p>
+                <p className="text-sm text-slate-500">{u.email}</p>
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
@@ -184,7 +186,7 @@ export default function StaffPage() {
                     setNewPassword("");
                   }}
                   title="Redefinir senha"
-                  className="p-2 rounded-xl text-gray-400 hover:text-primary-dark hover:bg-gray-100 transition-colors"
+                  className="p-2 rounded-xl text-slate-500 hover:text-slate-200 hover:bg-slate-700 transition-colors"
                 >
                   <KeyRound size={16} />
                 </button>
@@ -193,8 +195,8 @@ export default function StaffPage() {
                   title={u.active ? "Desativar" : "Ativar"}
                   className={`p-2 rounded-xl transition-colors ${
                     u.active
-                      ? "text-gray-400 hover:text-red-500 hover:bg-red-50"
-                      : "text-gray-400 hover:text-brand-green hover:bg-green-50"
+                      ? "text-slate-500 hover:text-red-400 hover:bg-red-500/10"
+                      : "text-slate-500 hover:text-brand-green hover:bg-brand-green/10"
                   }`}
                 >
                   {u.active ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -209,17 +211,17 @@ export default function StaffPage() {
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setModalOpen(false)}
           />
-          <div className="relative bg-pure-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
+          <div className="relative bg-slate-800 border border-slate-700 rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold text-primary-dark">
+              <h2 className="text-lg font-bold text-slate-100">
                 Novo Membro
               </h2>
               <button
                 onClick={() => setModalOpen(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-slate-500 hover:text-slate-200 transition-colors"
               >
                 <X size={20} />
               </button>
@@ -227,13 +229,13 @@ export default function StaffPage() {
 
             <form onSubmit={handleCreate} className="space-y-4">
               {error && (
-                <div className="bg-red-50 text-red-700 text-sm font-medium px-4 py-3 rounded-xl">
+                <div className="bg-red-500/20 text-red-400 text-sm font-medium px-4 py-3 rounded-xl border border-red-500/30">
                   {error}
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-300 mb-1">
                   Nome *
                 </label>
                 <input
@@ -242,12 +244,12 @@ export default function StaffPage() {
                     setForm((p) => ({ ...p, name: e.target.value }))
                   }
                   required
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
+                  className={inputCls}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-300 mb-1">
                   Email *
                 </label>
                 <input
@@ -257,12 +259,12 @@ export default function StaffPage() {
                     setForm((p) => ({ ...p, email: e.target.value }))
                   }
                   required
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
+                  className={inputCls}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-300 mb-1">
                   Senha *
                 </label>
                 <input
@@ -273,12 +275,12 @@ export default function StaffPage() {
                   }
                   required
                   minLength={4}
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
+                  className={inputCls}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-300 mb-1">
                   Cargo
                 </label>
                 <select
@@ -289,7 +291,7 @@ export default function StaffPage() {
                       role: e.target.value as "ADMIN" | "EMPLOYEE",
                     }))
                   }
-                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
+                  className={inputCls}
                 >
                   <option value="EMPLOYEE">Funcionário</option>
                   <option value="ADMIN">Admin</option>
@@ -300,14 +302,14 @@ export default function StaffPage() {
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="flex-1 px-4 py-3 rounded-2xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                  className="flex-1 px-4 py-3 rounded-2xl border border-slate-600 text-sm font-semibold text-slate-300 hover:bg-slate-700 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 bg-brand-green hover:bg-brand-green-hover disabled:bg-gray-300 text-primary-dark font-bold py-3 rounded-2xl transition-colors text-sm flex items-center justify-center gap-2"
+                  className="flex-1 bg-brand-green hover:bg-brand-green-hover disabled:bg-slate-600 text-primary-dark font-bold py-3 rounded-2xl transition-colors text-sm flex items-center justify-center gap-2"
                 >
                   {saving && <Loader2 size={16} className="animate-spin" />}
                   Criar Membro
@@ -322,30 +324,30 @@ export default function StaffPage() {
       {resetModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setResetModal(null)}
           />
-          <div className="relative bg-pure-white rounded-2xl shadow-xl p-6 max-w-sm mx-4 space-y-4">
-            <h3 className="font-bold text-primary-dark">Redefinir Senha</h3>
+          <div className="relative bg-slate-800 border border-slate-700 rounded-2xl shadow-xl p-6 max-w-sm mx-4 space-y-4">
+            <h3 className="font-bold text-slate-100">Redefinir Senha</h3>
             <input
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="Nova senha"
               minLength={4}
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
+              className={inputCls}
             />
             <div className="flex gap-3">
               <button
                 onClick={() => setResetModal(null)}
-                className="flex-1 px-4 py-2.5 rounded-2xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2.5 rounded-2xl border border-slate-600 text-sm font-semibold text-slate-300 hover:bg-slate-700 transition-colors"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleResetPassword}
                 disabled={saving || newPassword.length < 4}
-                className="flex-1 bg-brand-green hover:bg-brand-green-hover disabled:bg-gray-300 text-primary-dark font-bold py-2.5 rounded-2xl transition-colors text-sm flex items-center justify-center gap-2"
+                className="flex-1 bg-brand-green hover:bg-brand-green-hover disabled:bg-slate-600 text-primary-dark font-bold py-2.5 rounded-2xl transition-colors text-sm flex items-center justify-center gap-2"
               >
                 {saving && <Loader2 size={14} className="animate-spin" />}
                 Redefinir

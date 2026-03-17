@@ -32,14 +32,14 @@ export function ProductGrid({ products, onAddToCart, onEdit, onDelete }: Product
         <div className="relative flex-1">
           <Search
             size={18}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
           />
           <input
             type="text"
             placeholder="Buscar por nome ou código de barras..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-pure-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-600 bg-slate-700 text-slate-200 placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
           />
         </div>
 
@@ -49,7 +49,7 @@ export function ProductGrid({ products, onAddToCart, onEdit, onDelete }: Product
             className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
               !selectedCategory
                 ? "bg-brand-green text-primary-dark"
-                : "bg-pure-white text-gray-500 border border-gray-200 hover:border-brand-green"
+                : "bg-slate-700 text-slate-400 border border-slate-600 hover:border-brand-green hover:text-slate-200"
             }`}
           >
             Todos
@@ -61,7 +61,7 @@ export function ProductGrid({ products, onAddToCart, onEdit, onDelete }: Product
               className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
                 selectedCategory === cat
                   ? "bg-brand-green text-primary-dark"
-                  : "bg-pure-white text-gray-500 border border-gray-200 hover:border-brand-green"
+                  : "bg-slate-700 text-slate-400 border border-slate-600 hover:border-brand-green hover:text-slate-200"
               }`}
             >
               {cat}
@@ -71,7 +71,7 @@ export function ProductGrid({ products, onAddToCart, onEdit, onDelete }: Product
       </div>
 
       {filtered.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
+        <div className="text-center py-16 text-slate-500">
           <p className="text-lg font-medium">Nenhum produto encontrado</p>
           <p className="text-sm mt-1">Tente ajustar sua busca ou filtro</p>
         </div>

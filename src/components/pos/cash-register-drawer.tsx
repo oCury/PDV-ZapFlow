@@ -122,11 +122,17 @@ export function CashRegisterDrawer({ isOpen, onClose }: CashRegisterDrawerProps)
   return (
     <>
       <div
-        className="fixed inset-0 bg-black/60 z-40"
+        className="fixed inset-0 bg-black/60 z-[59]"
         onClick={onClose}
         aria-hidden="true"
       />
-      <div className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-slate-800 border-l border-slate-600 z-50 flex flex-col shadow-2xl">
+      <div
+        className="fixed right-0 top-0 w-full max-w-md bg-slate-800 border-l border-slate-600 z-[60] flex flex-col shadow-2xl"
+        style={{
+          bottom: 0,
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        }}
+      >
         <div className="flex items-center justify-between p-4 border-b border-slate-600">
           <div className="flex items-center gap-2">
             <Wallet size={24} className="text-brand-green" />

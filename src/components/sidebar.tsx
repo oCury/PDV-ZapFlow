@@ -10,6 +10,8 @@ import {
   Receipt,
   Settings,
   Users,
+  UserCheck,
+  UtensilsCrossed,
   ChevronLeft,
   ChevronRight,
   LogOut,
@@ -26,7 +28,9 @@ interface NavItem {
 const navItems: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard, adminOnly: true },
   { href: "/pdv", label: "PDV", icon: ShoppingCart, adminOnly: false },
+  { href: "/tables", label: "Mesas", icon: UtensilsCrossed, adminOnly: false },
   { href: "/products", label: "Produtos", icon: Package, adminOnly: false },
+  { href: "/customers", label: "Clientes", icon: UserCheck, adminOnly: true },
   { href: "/sales", label: "Vendas", icon: Receipt, adminOnly: true },
   { href: "/staff", label: "Equipe", icon: Users, adminOnly: true },
   { href: "/settings", label: "Configurações", icon: Settings, adminOnly: true },

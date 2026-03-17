@@ -68,8 +68,8 @@ export default function ProductsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-primary-dark">Produtos</h1>
-          <p className="text-gray-500 text-sm mt-1">
+          <h1 className="text-2xl font-bold text-slate-100">Produtos</h1>
+          <p className="text-slate-400 text-sm mt-1">
             {isAdmin
               ? "Gerencie o catálogo de produtos"
               : "Consulte o catálogo de produtos"}
@@ -77,7 +77,7 @@ export default function ProductsPage() {
         </div>
         <div className="flex items-center gap-3">
           {!isAdmin && role && (
-            <span className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full">
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-blue-400 bg-blue-500/20 px-3 py-1.5 rounded-full">
               <Eye size={14} />
               Somente Leitura
             </span>
@@ -95,12 +95,12 @@ export default function ProductsPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20 text-gray-400">
+        <div className="flex items-center justify-center py-20 text-slate-500">
           <Loader2 size={24} className="animate-spin mr-2" />
           Carregando produtos...
         </div>
       ) : error ? (
-        <div className="text-red-500 p-4">{error}</div>
+        <div className="text-red-400 p-4">{error}</div>
       ) : (
         <ProductGrid
           products={products}
@@ -121,17 +121,17 @@ export default function ProductsPage() {
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setDeleteConfirm(null)}
           />
-          <div className="relative bg-pure-white rounded-2xl shadow-xl p-6 max-w-sm mx-4 space-y-4">
+          <div className="relative bg-slate-800 border border-slate-700 rounded-2xl shadow-xl p-6 max-w-sm mx-4 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="bg-red-100 p-2 rounded-xl">
-                <AlertTriangle size={24} className="text-red-500" />
+              <div className="bg-red-500/20 p-2 rounded-xl">
+                <AlertTriangle size={24} className="text-red-400" />
               </div>
               <div>
-                <h3 className="font-bold text-primary-dark">Excluir Produto</h3>
-                <p className="text-sm text-gray-500">
+                <h3 className="font-bold text-slate-100">Excluir Produto</h3>
+                <p className="text-sm text-slate-400">
                   Tem certeza? Esta ação não pode ser desfeita.
                 </p>
               </div>
@@ -139,14 +139,14 @@ export default function ProductsPage() {
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteConfirm(null)}
-                className="flex-1 px-4 py-2.5 rounded-2xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2.5 rounded-2xl border border-slate-600 text-sm font-semibold text-slate-300 hover:bg-slate-700 transition-colors"
               >
                 Cancelar
               </button>
               <button
                 onClick={() => handleDelete(deleteConfirm)}
                 disabled={deleting}
-                className="flex-1 px-4 py-2.5 rounded-2xl bg-red-500 hover:bg-red-600 text-pure-white text-sm font-bold transition-colors flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2.5 rounded-2xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold transition-colors flex items-center justify-center gap-2"
               >
                 {deleting && <Loader2 size={14} className="animate-spin" />}
                 Excluir

@@ -30,8 +30,8 @@ export function ProductCard({
   const lowStock = stock_quantity > 0 && stock_quantity <= 10;
 
   return (
-    <div className="bg-pure-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow duration-200 flex flex-col">
-      <div className="relative h-40 bg-gray-100 flex items-center justify-center">
+    <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden hover:border-slate-600 transition-colors duration-200 flex flex-col">
+      <div className="relative h-40 bg-slate-700/50 flex items-center justify-center">
         {image_url ? (
           <img
             src={image_url}
@@ -39,18 +39,18 @@ export function ProductCard({
             className="object-cover w-full h-full"
           />
         ) : (
-          <Package size={48} className="text-gray-300" />
+          <Package size={48} className="text-slate-600" />
         )}
-        <span className="absolute top-2 left-2 bg-primary-dark/80 text-pure-white text-xs font-medium px-2.5 py-1 rounded-full">
+        <span className="absolute top-2 left-2 bg-slate-900/80 text-slate-300 text-xs font-medium px-2.5 py-1 rounded-full">
           {category}
         </span>
         {lowStock && (
-          <span className="absolute top-2 right-2 bg-amber-500 text-pure-white text-xs font-medium px-2.5 py-1 rounded-full">
+          <span className="absolute top-2 right-2 bg-amber-500 text-white text-xs font-medium px-2.5 py-1 rounded-full">
             Estoque baixo
           </span>
         )}
         {!inStock && (
-          <span className="absolute top-2 right-2 bg-red-500 text-pure-white text-xs font-medium px-2.5 py-1 rounded-full">
+          <span className="absolute top-2 right-2 bg-red-500 text-white text-xs font-medium px-2.5 py-1 rounded-full">
             Sem estoque
           </span>
         )}
@@ -60,7 +60,7 @@ export function ProductCard({
             {onEdit && (
               <button
                 onClick={() => onEdit(id)}
-                className="bg-pure-white/90 hover:bg-pure-white text-primary-dark p-1.5 rounded-lg transition-colors shadow-sm"
+                className="bg-slate-800/90 hover:bg-slate-700 text-slate-300 p-1.5 rounded-lg transition-colors shadow-sm"
                 title="Editar produto"
               >
                 <Pencil size={14} />
@@ -69,7 +69,7 @@ export function ProductCard({
             {onDelete && (
               <button
                 onClick={() => onDelete(id)}
-                className="bg-pure-white/90 hover:bg-red-50 text-red-500 p-1.5 rounded-lg transition-colors shadow-sm"
+                className="bg-slate-800/90 hover:bg-red-500/20 text-red-400 p-1.5 rounded-lg transition-colors shadow-sm"
                 title="Excluir produto"
               >
                 <Trash2 size={14} />
@@ -80,17 +80,17 @@ export function ProductCard({
       </div>
 
       <div className="p-4 flex flex-col flex-1">
-        <h3 className="font-semibold text-primary-dark text-sm leading-tight line-clamp-2">
+        <h3 className="font-semibold text-slate-200 text-sm leading-tight line-clamp-2">
           {name}
         </h3>
-        <p className="text-xs text-gray-400 mt-1 font-mono">{barcode}</p>
+        <p className="text-xs text-slate-500 mt-1 font-mono">{barcode}</p>
 
         <div className="mt-auto pt-3 flex items-end justify-between">
           <div>
             <p className="text-xl font-bold text-brand-green">
               R$ {sell_price.toFixed(2)}
             </p>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-slate-500">
               {stock_quantity} em estoque
             </p>
           </div>
@@ -99,7 +99,7 @@ export function ProductCard({
             <button
               onClick={() => onAddToCart(id)}
               disabled={!inStock}
-              className="bg-brand-green hover:bg-brand-green-hover disabled:bg-gray-300 disabled:cursor-not-allowed text-primary-dark p-2.5 rounded-xl transition-colors duration-200"
+              className="bg-brand-green hover:bg-brand-green-hover disabled:bg-slate-600 disabled:cursor-not-allowed text-primary-dark p-2.5 rounded-xl transition-colors duration-200"
             >
               <Plus size={18} />
             </button>

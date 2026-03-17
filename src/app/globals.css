@@ -1,13 +1,19 @@
 @import "tailwindcss";
 
+/* Enable class-based dark mode (next-themes adds .dark to <html>) */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-primary-dark: #1a1d21;
+  --color-slate-900: #0f172a;
   --color-slate-800: #1e293b;
   --color-slate-700: #334155;
   --color-slate-600: #475569;
   --color-slate-500: #64748b;
   --color-slate-400: #94a3b8;
   --color-slate-300: #cbd5e1;
+  --color-slate-200: #e2e8f0;
+  --color-slate-100: #f1f5f9;
   --color-brand-green: #22c55e;
   --color-brand-green-hover: #16a34a;
   --color-brand-green-muted: #15803d;
@@ -26,10 +32,31 @@
   --color-gray-900: #0f172a;
 }
 
+/* Dark theme (default) */
+:root {
+  --bg-base: #0f172a;
+  --bg-surface: #1e293b;
+  --bg-surface-2: #334155;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --border-color: #334155;
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Light theme override */
+.light {
+  --bg-base: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-2: #f1f5f9;
+  --text-primary: #1a1d21;
+  --text-secondary: #64748b;
+  --border-color: #e2e8f0;
+}
+
 body {
   font-family: "Inter", system-ui, -apple-system, sans-serif;
-  background-color: var(--color-gray-50);
-  color: var(--color-primary-dark);
+  background-color: var(--bg-base);
+  color: var(--text-primary);
 }
 
 /* PDV touch-first dark theme (applied via .pdv-theme wrapper) */
@@ -41,6 +68,11 @@ body {
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--color-slate-600) transparent;
+}
+
+/* iOS / Android safe-area support */
+:root {
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* Touch target minimum 44x44px */

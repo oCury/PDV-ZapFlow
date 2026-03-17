@@ -71,34 +71,24 @@ export function PosProductGrid({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin -mx-1">
-        <button
-          onClick={() => setSelectedCategory(null)}
-          className={`touch-target min-h-[48px] shrink-0 px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-            !selectedCategory
-              ? "bg-brand-green text-primary-dark"
-              : "bg-slate-700 text-slate-300 hover:bg-slate-600"
-          }`}
-        >
-          Todos
-        </button>
-        {categories.map((cat) => (
+    <div className="flex flex-col gap-4">
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
+        {[null, ...categories].map((cat) => (
           <button
-            key={cat}
+            key={cat ?? "__all__"}
             onClick={() => setSelectedCategory(cat)}
-            className={`touch-target min-h-[48px] shrink-0 px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+            className={`touch-target min-h-[40px] sm:min-h-[48px] shrink-0 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap ${
               selectedCategory === cat
                 ? "bg-brand-green text-primary-dark"
                 : "bg-slate-700 text-slate-300 hover:bg-slate-600"
             }`}
           >
-            {cat}
+            {cat ?? "Todos"}
           </button>
         ))}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3 content-start">
         {filtered.map((product) => (
           <PosProductCard
             key={product.id}
@@ -127,7 +117,7 @@ function PosProductCard({
       disabled={outOfStock}
       className="touch-target group relative bg-slate-700/80 rounded-2xl overflow-hidden text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-lg hover:shadow-brand-green/10 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 focus:outline-none focus:ring-2 focus:ring-brand-green/50"
     >
-      <div className="relative aspect-square min-h-[120px] bg-slate-800 flex items-center justify-center overflow-hidden">
+      <div className="relative aspect-square min-h-[90px] sm:min-h-[120px] bg-slate-800 flex items-center justify-center overflow-hidden">
         {product.image_url ? (
           <img
             src={product.image_url}
@@ -135,23 +125,26 @@ function PosProductCard({
             className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
-          <Package size={48} className="text-slate-500" />
+          <>
+            <Package size={32} className="text-slate-500 sm:hidden" />
+            <Package size={48} className="text-slate-500 hidden sm:block" />
+          </>
         )}
         {outOfStock && (
           <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-            <span className="text-sm font-bold text-red-400">SEM ESTOQUE</span>
+            <span className="text-xs sm:text-sm font-bold text-red-400">SEM ESTOQUE</span>
           </div>
         )}
       </div>
 
-      <div className="p-4 space-y-1">
-        <h3 className="text-base font-bold text-white leading-tight line-clamp-2">
+      <div className="p-2 sm:p-4 space-y-0.5 sm:space-y-1">
+        <h3 className="text-xs sm:text-base font-bold text-white leading-tight line-clamp-2">
           {product.name}
         </h3>
-        <p className="text-xl font-bold text-brand-green">
+        <p className="text-sm sm:text-xl font-bold text-brand-green">
           R$ {product.sell_price.toFixed(2)}
         </p>
-        <p className="text-xs text-slate-400">{product.stock_quantity} un.</p>
+        <p className="text-[10px] sm:text-xs text-slate-400">{product.stock_quantity} un.</p>
       </div>
 
       <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover:border-brand-green/30 transition-colors pointer-events-none" />
