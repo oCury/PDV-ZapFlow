@@ -77,6 +77,7 @@ model Customer {
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
   sales          Sale[]
+  followups      CustomerFollowup[]
 
   @@index([phone])
   @@index([cpf])
@@ -116,6 +117,7 @@ model Sale {
   payments         SalePayment[]
   customer         Customer?     @relation(fields: [customer_id], references: [id])
   table            Table?        @relation(fields: [table_id], references: [id]) // M5
+  followup         CustomerFollowup?
 
   @@index([table_id])
   @@index([status])
@@ -165,4 +167,26 @@ model SaleItem {
   @@index([sale_id])
   @@index([product_id])
   @@map("sale_items")
+}
+
+// ─── Customer Follow-up (Retention) ──────────────────────────────────────────
+
+model CustomerFollowup {
+  id              String   @id @default(cuid())
+  customer_id     String
+  sale_id         String   @unique
+  type            String   // "15_DAY_CASHBACK"
+  cashback_amount Decimal  @db.Decimal(10, 2)
+  points_added    Int
+  sent_at         DateTime @default(now())
+  whatsapp_status String   // "SENT", "FAILED", "PENDING"
+  message         String?
+
+  customer Customer @relation(fields: [customer_id], references: [id])
+  sale     Sale     @relation(fields: [sale_id], references: [id])
+
+  @@index([customer_id])
+  @@index([sale_id])
+  @@index([sent_at])
+  @@map("customer_followups")
 }

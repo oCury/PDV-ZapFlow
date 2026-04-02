@@ -33,29 +33,65 @@ export async function GET(req: Request) {
       );
     }
 
-    // Search: phone by contains (partial match) or cpf by exact match
-    const conditions: object[] = [];
-    if (phoneRaw.length >= 10) {
-      conditions.push({ phone: { contains: phoneRaw } });
-      conditions.push({ phone: { endsWith: phoneRaw } });
-    }
-    if (cpfRaw.length >= 11) {
-      conditions.push({ cpf: cpfRaw });
+    // Search using raw SQL to normalize phone numbers (remove non-digits before comparing)
+    console.log("[Customer Search] Phone:", phoneRaw, "CPF:", cpfRaw);
+
+    type CustomerResult = {
+      id: string;
+      name: string | null;
+      phone: string | null;
+      whatsapp: string | null;
+      email: string | null;
+      cpf: string | null;
+      loyalty_points: number;
+      created_at: Date;
+    };
+
+    let customer: CustomerResult | null = null;
+
+    // Try phone search using raw SQL to normalize
+    if (phoneRaw.length >= 8) {
+      // Get last 8-9 digits for matching (handles DDD variations)
+      const last9 = phoneRaw.slice(-9);
+      const last8 = phoneRaw.slice(-8);
+      
+      // Use raw SQL to match normalized phone numbers
+      const results = await prisma.$queryRaw<CustomerResult[]>`
+        SELECT id, name, phone, whatsapp, email, cpf, loyalty_points, created_at
+        FROM "Customer"
+        WHERE 
+          REGEXP_REPLACE(phone, '[^0-9]', '', 'g') LIKE ${'%' + last9}
+          OR REGEXP_REPLACE(phone, '[^0-9]', '', 'g') LIKE ${'%' + last8}
+          OR REGEXP_REPLACE(whatsapp, '[^0-9]', '', 'g') LIKE ${'%' + last9}
+          OR REGEXP_REPLACE(whatsapp, '[^0-9]', '', 'g') LIKE ${'%' + last8}
+          OR REGEXP_REPLACE(phone, '[^0-9]', '', 'g') = ${phoneRaw}
+          OR REGEXP_REPLACE(whatsapp, '[^0-9]', '', 'g') = ${phoneRaw}
+        LIMIT 1
+      `;
+      
+      if (results.length > 0) {
+        customer = results[0];
+      }
     }
 
-    const customer = await prisma.customer.findFirst({
-      where: { OR: conditions },
-      select: {
-        id: true,
-        name: true,
-        phone: true,
-        whatsapp: true,
-        email: true,
-        cpf: true,
-        loyalty_points: true,
-        created_at: true,
-      },
-    });
+    // Fallback: try CPF search
+    if (!customer && cpfRaw.length >= 11) {
+      customer = await prisma.customer.findFirst({
+        where: { cpf: cpfRaw },
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          whatsapp: true,
+          email: true,
+          cpf: true,
+          loyalty_points: true,
+          created_at: true,
+        },
+      });
+    }
+    
+    console.log("[Customer Search] Found:", customer?.name || "none");
 
     if (!customer) {
       return NextResponse.json(
@@ -100,22 +136,41 @@ export async function POST(req: Request) {
       );
     }
 
-    const customer = await prisma.customer.upsert({
-      where: { phone },
-      update: {
-        ...(name && { name }),
-        ...(email && { email }),
-        ...(cpf && { cpf: cpf.replace(/\D/g, "") }),
-        ...(whatsapp && { whatsapp }),
-      },
-      create: {
-        phone,
-        name,
-        email,
-        cpf: cpf ? cpf.replace(/\D/g, "") : undefined,
-        whatsapp,
-      },
-    });
+    // Normalize phone number (remove non-digits)
+    const phoneNormalized = phone.replace(/\D/g, "");
+    const whatsappNormalized = whatsapp ? whatsapp.replace(/\D/g, "") : undefined;
+
+    // First check if customer exists by normalized phone
+    const existingByPhone = await prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM "Customer"
+      WHERE REGEXP_REPLACE(phone, '[^0-9]', '', 'g') = ${phoneNormalized}
+      LIMIT 1
+    `;
+
+    let customer;
+    if (existingByPhone.length > 0) {
+      // Update existing customer
+      customer = await prisma.customer.update({
+        where: { id: existingByPhone[0].id },
+        data: {
+          ...(name && { name }),
+          ...(email && { email }),
+          ...(cpf && { cpf: cpf.replace(/\D/g, "") }),
+          ...(whatsappNormalized && { whatsapp: whatsappNormalized }),
+        },
+      });
+    } else {
+      // Create new customer with normalized phone
+      customer = await prisma.customer.create({
+        data: {
+          phone: phoneNormalized,
+          name,
+          email,
+          cpf: cpf ? cpf.replace(/\D/g, "") : undefined,
+          whatsapp: whatsappNormalized,
+        },
+      });
+    }
 
     return NextResponse.json(customer, { status: 201 });
   } catch (error) {

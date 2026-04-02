@@ -1,8 +1,25 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
-import { Monitor, Moon, Sun, Palette, Store, MessageCircle } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import {
+  Monitor,
+  Moon,
+  Sun,
+  Palette,
+  Store,
+  MessageCircle,
+  CheckCircle,
+  XCircle,
+  Loader2,
+  RefreshCw,
+  Send,
+  QrCode,
+  Wifi,
+  WifiOff,
+  Plus,
+  Server,
+} from "lucide-react";
 
 type ThemeOption = "light" | "dark" | "system";
 
@@ -12,32 +29,295 @@ const themeOptions: { value: ThemeOption; label: string; icon: typeof Moon }[] =
   { value: "system", label: "Sistema", icon: Monitor },
 ];
 
+interface WhatsAppStatus {
+  configured: boolean;
+  connected: boolean;
+  state?: string;
+  instanceName?: string;
+  message?: string;
+  error?: string;
+}
+
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  
+  const [whatsappStatus, setWhatsappStatus] = useState<WhatsAppStatus | null>(null);
+  const [loadingStatus, setLoadingStatus] = useState(false);
+  const [loadingQR, setLoadingQR] = useState(false);
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [testNumber, setTestNumber] = useState("");
+  const [testMessage, setTestMessage] = useState("Olá! Esta é uma mensagem de teste do PDV ZapFlow.");
+  const [sendingTest, setSendingTest] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  
+  const [instanceExists, setInstanceExists] = useState(false);
+  const [activeInstanceName, setActiveInstanceName] = useState("");
+  const [newInstanceName, setNewInstanceName] = useState("");
+  const [availableInstances, setAvailableInstances] = useState<Array<{ name: string; connected: boolean; number?: string }>>([]);
+  const [loadingInstances, setLoadingInstances] = useState(false);
+  const [creatingInstance, setCreatingInstance] = useState(false);
+  const [instanceResult, setInstanceResult] = useState<{ success: boolean; message: string; details?: string; help?: string } | null>(null);
+  const [apiReachable, setApiReachable] = useState<boolean | null>(null);
+  const [showCreateNew, setShowCreateNew] = useState(false);
 
-  // Avoid hydration mismatch — only render after mount
+  const fetchInstances = useCallback(async () => {
+    setLoadingInstances(true);
+    try {
+      const res = await fetch("/api/whatsapp/instance");
+      const data = await res.json();
+      
+      if (data.configured && data.reachable) {
+        setApiReachable(true);
+        setWhatsappStatus(prev => ({ ...prev, configured: true, connected: false }));
+        
+        // Get list of available instances with status
+        const instances = data.instances || [];
+        const instancesWithStatus: Array<{ name: string; connected: boolean; number?: string }> = [];
+        
+        console.log("[Settings] Instances received:", instances);
+        
+        for (const inst of instances) {
+          const name = inst.instanceName || inst.name || "";
+          if (!name) continue;
+          
+          // Get status for each instance
+          try {
+            const statusRes = await fetch(`/api/whatsapp/status?instance=${encodeURIComponent(name)}`);
+            const statusData = await statusRes.json();
+            instancesWithStatus.push({
+              name,
+              connected: statusData.connected || false,
+              number: inst.owner || statusData.number,
+            });
+          } catch {
+            instancesWithStatus.push({ name, connected: false });
+          }
+        }
+        
+        console.log("[Settings] Instances with status:", instancesWithStatus);
+        setAvailableInstances(instancesWithStatus);
+        
+        // If there are instances but no active one selected, show selection
+        if (instancesWithStatus.length > 0 && !activeInstanceName) {
+          setShowCreateNew(false);
+        }
+      } else if (data.configured) {
+        setApiReachable(false);
+        setWhatsappStatus({ configured: true, connected: false, error: data.error });
+      } else {
+        setWhatsappStatus({ configured: false, connected: false, error: data.error });
+      }
+    } catch {
+      setApiReachable(false);
+      setWhatsappStatus({ configured: false, connected: false, error: "Erro ao conectar" });
+    } finally {
+      setLoadingInstances(false);
+    }
+  }, [activeInstanceName]);
+
+  const selectInstance = (name: string, isConnected: boolean) => {
+    setActiveInstanceName(name);
+    setInstanceExists(true);
+    
+    if (isConnected) {
+      setWhatsappStatus({ configured: true, connected: true });
+      setInstanceResult({
+        success: true,
+        message: `Conectado à instância "${name}"!`,
+      });
+      setQrCode(null);
+    } else {
+      setWhatsappStatus({ configured: true, connected: false });
+      setInstanceResult({
+        success: true,
+        message: `Instância "${name}" selecionada. Clique em "Gerar QR Code" para conectar.`,
+      });
+    }
+  };
+
+  const createInstance = async () => {
+    const instanceName = newInstanceName.trim();
+    
+    if (!instanceName) {
+      setInstanceResult({
+        success: false,
+        message: "Digite um nome para a instância",
+      });
+      return;
+    }
+
+    setCreatingInstance(true);
+    setInstanceResult(null);
+    try {
+      const res = await fetch("/api/whatsapp/instance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ instanceName }),
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        setInstanceResult({
+          success: true,
+          message: `Instância "${instanceName}" criada! Clique em "Gerar QR Code" para conectar.`,
+        });
+        // Set the active instance name to the one just created
+        setActiveInstanceName(instanceName);
+        setInstanceExists(true);
+        // Check status for the new instance
+        checkWhatsAppStatus(instanceName);
+      } else {
+        setInstanceResult({
+          success: false,
+          message: data.error || "Erro ao criar instância",
+          details: data.details,
+          help: data.help,
+        });
+      }
+    } catch {
+      setInstanceResult({ success: false, message: "Erro de conexão com o servidor local" });
+    } finally {
+      setCreatingInstance(false);
+    }
+  };
+
+  const checkWhatsAppStatus = useCallback(async (instanceName?: string) => {
+    setLoadingStatus(true);
+    try {
+      const name = instanceName || activeInstanceName;
+      const url = name 
+        ? `/api/whatsapp/status?instance=${encodeURIComponent(name)}`
+        : "/api/whatsapp/status";
+      
+      const res = await fetch(url);
+      const data = await res.json();
+      setWhatsappStatus(data);
+      
+      if (data.connected) {
+        setQrCode(null);
+      }
+    } catch {
+      setWhatsappStatus({
+        configured: false,
+        connected: false,
+        error: "Erro ao verificar status",
+      });
+    } finally {
+      setLoadingStatus(false);
+    }
+  }, [activeInstanceName]);
+
+  const [qrError, setQrError] = useState<string | null>(null);
+
+  const getQRCode = async () => {
+    if (!activeInstanceName) {
+      setQrError("Nenhuma instância ativa. Crie uma instância primeiro.");
+      return;
+    }
+
+    setLoadingQR(true);
+    setQrError(null);
+    try {
+      const res = await fetch(`/api/whatsapp/connect?instance=${encodeURIComponent(activeInstanceName)}`);
+      const data = await res.json();
+      
+      if (data.connected) {
+        setWhatsappStatus(prev => prev ? { ...prev, connected: true } : null);
+        setQrCode(null);
+        return;
+      }
+      
+      if (data.qrcode) {
+        setQrCode(data.qrcode);
+      } else if (data.error) {
+        setQrError(data.error + (data.details ? ` (${data.details})` : ""));
+      }
+    } catch (err) {
+      setQrError("Erro de conexão com o servidor");
+      console.error("Error getting QR code:", err);
+    } finally {
+      setLoadingQR(false);
+    }
+  };
+
+  const sendTestMessage = async () => {
+    if (!testNumber.trim()) return;
+    
+    if (!activeInstanceName) {
+      setTestResult({ success: false, message: "Selecione uma instância primeiro" });
+      return;
+    }
+    
+    setSendingTest(true);
+    setTestResult(null);
+    
+    try {
+      const res = await fetch("/api/whatsapp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          number: testNumber,
+          message: testMessage,
+          type: "text",
+          instanceName: activeInstanceName,
+        }),
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        setTestResult({ success: true, message: "Mensagem enviada com sucesso!" });
+        setTestNumber("");
+      } else {
+        setTestResult({ success: false, message: data.error || "Erro ao enviar" });
+      }
+    } catch {
+      setTestResult({ success: false, message: "Erro de conexão" });
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
   useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    fetchInstances();
+  }, [fetchInstances]);
+
+  // Only check WhatsApp status if we have an active instance
+  useEffect(() => {
+    if (activeInstanceName) {
+      checkWhatsAppStatus(activeInstanceName);
+    }
+  }, [activeInstanceName, checkWhatsAppStatus]);
+
+  // Poll for connection status while showing QR code
+  useEffect(() => {
+    if (whatsappStatus?.configured && !whatsappStatus.connected && qrCode && activeInstanceName) {
+      const interval = setInterval(() => checkWhatsAppStatus(activeInstanceName), 5000);
+      return () => clearInterval(interval);
+    }
+  }, [whatsappStatus, qrCode, activeInstanceName, checkWhatsAppStatus]);
 
   return (
     <div className="space-y-6 max-w-2xl">
-      {/* Page header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-100">Configurações</h1>
-        <p className="text-slate-400 text-sm mt-1">
+        <h1 className="text-2xl font-bold theme-text-primary">Configurações</h1>
+        <p className="theme-text-secondary text-sm mt-1">
           Personalize o sistema conforme suas preferências
         </p>
       </div>
 
       {/* ── Appearance ─────────────────────────────────────────────── */}
-      <section className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
-        <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-700">
+      <section className="theme-bg-surface rounded-2xl border theme-border overflow-hidden">
+        <div className="flex items-center gap-3 px-6 py-4 border-b theme-border">
           <div className="p-2 bg-brand-green/10 rounded-xl">
             <Palette size={18} className="text-brand-green" />
           </div>
           <div>
-            <h2 className="font-semibold text-slate-100 text-sm">Aparência</h2>
-            <p className="text-slate-500 text-xs">Escolha o tema da interface</p>
+            <h2 className="font-semibold theme-text-primary text-sm">Aparência</h2>
+            <p className="theme-text-secondary text-xs">Escolha o tema da interface</p>
           </div>
         </div>
 
@@ -53,7 +333,7 @@ export default function SettingsPage() {
                     className={`flex flex-col items-center gap-2.5 p-4 rounded-xl border-2 transition-all duration-200 ${
                       active
                         ? "border-brand-green bg-brand-green/10 text-brand-green"
-                        : "border-slate-700 bg-slate-700/50 text-slate-400 hover:border-slate-500 hover:text-slate-200"
+                        : "theme-border theme-bg-surface-2 theme-text-secondary hover:border-slate-500"
                     }`}
                   >
                     <Icon size={22} />
@@ -80,6 +360,415 @@ export default function SettingsPage() {
         </div>
       </section>
 
+      {/* ── WhatsApp / Evolution API ────────────────────────────────── */}
+      <section className="theme-bg-surface rounded-2xl border theme-border overflow-hidden">
+        <div className="flex items-center gap-3 px-6 py-4 border-b theme-border">
+          <div className="p-2 bg-green-500/10 rounded-xl">
+            <MessageCircle size={18} className="text-green-500" />
+          </div>
+          <div className="flex-1">
+            <h2 className="font-semibold theme-text-primary text-sm">WhatsApp (Evolution API)</h2>
+            <p className="theme-text-secondary text-xs">Envie mensagens e notificações via WhatsApp</p>
+          </div>
+          <button
+            onClick={() => {
+              fetchInstances();
+              if (activeInstanceName) checkWhatsAppStatus(activeInstanceName);
+            }}
+            disabled={loadingStatus || loadingInstances}
+            className="p-2 theme-text-secondary hover:theme-text-primary hover:bg-slate-700/50 rounded-lg transition-colors"
+          >
+            <RefreshCw size={16} className={loadingStatus || loadingInstances ? "animate-spin" : ""} />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-6">
+          {/* Status */}
+          <div className="flex items-center justify-between p-4 bg-slate-700/50 rounded-xl">
+            <div className="flex items-center gap-3">
+              {loadingStatus ? (
+                <Loader2 size={20} className="text-slate-400 animate-spin" />
+              ) : whatsappStatus?.connected ? (
+                <Wifi size={20} className="text-green-500" />
+              ) : whatsappStatus?.configured ? (
+                <WifiOff size={20} className="text-yellow-500" />
+              ) : (
+                <XCircle size={20} className="text-red-500" />
+              )}
+              <div>
+                <p className="text-sm font-medium text-slate-200">
+                  {loadingStatus
+                    ? "Verificando..."
+                    : whatsappStatus?.connected
+                    ? "Conectado"
+                    : whatsappStatus?.configured
+                    ? "Desconectado"
+                    : "Não configurado"}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {activeInstanceName && `Instância: ${activeInstanceName}`}
+                  {!activeInstanceName && whatsappStatus?.error && `Erro: ${whatsappStatus.error}`}
+                </p>
+              </div>
+            </div>
+            
+            {whatsappStatus?.connected && (
+              <span className="flex items-center gap-1.5 text-xs font-medium text-green-500 bg-green-500/10 px-3 py-1.5 rounded-full">
+                <CheckCircle size={12} />
+                Online
+              </span>
+            )}
+          </div>
+
+          {/* QR Code Section */}
+          {whatsappStatus?.configured && !whatsappStatus.connected && instanceExists && activeInstanceName && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-slate-400">
+                    Escaneie o QR Code com seu WhatsApp para conectar
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Instância: <span className="text-green-400">{activeInstanceName}</span>
+                  </p>
+                </div>
+                <button
+                  onClick={getQRCode}
+                  disabled={loadingQR}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {loadingQR ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <QrCode size={16} />
+                  )}
+                  {qrCode ? "Atualizar QR" : "Gerar QR Code"}
+                </button>
+              </div>
+
+              {qrError && (
+                <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl">
+                  <p className="text-sm text-red-400 font-medium mb-1">Erro ao gerar QR Code:</p>
+                  <p className="text-xs text-red-300">{qrError}</p>
+                </div>
+              )}
+
+              {qrCode && (
+                <div className="flex justify-center p-6 bg-white rounded-xl">
+                  <img
+                    src={qrCode}
+                    alt="QR Code WhatsApp"
+                    className="w-64 h-64"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Not Configured */}
+          {!whatsappStatus?.configured && !loadingStatus && (
+            <div className="p-4 bg-slate-700/30 border border-slate-600 rounded-xl">
+              <p className="text-sm text-slate-300 mb-3">
+                Configure as variáveis de ambiente para usar o WhatsApp:
+              </p>
+              <code className="block p-3 bg-slate-900 rounded-lg text-xs text-slate-400 font-mono overflow-x-auto">
+                EVOLUTION_API_URL=&quot;https://sua-instancia-evolution.com&quot;<br />
+                EVOLUTION_API_KEY=&quot;seu-token-global&quot;<br />
+                EVOLUTION_INSTANCE_NAME=&quot;pdv-zapflow&quot;
+              </code>
+            </div>
+          )}
+
+          {/* Instance Management */}
+          {whatsappStatus?.configured && (
+            <div className="space-y-4 pt-4 border-t border-slate-700">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Server size={16} className="text-slate-400" />
+                  <h3 className="text-sm font-medium text-slate-200">Instância deste PDV</h3>
+                </div>
+                <button
+                  onClick={fetchInstances}
+                  disabled={loadingInstances}
+                  className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700 rounded-lg transition-colors"
+                  title="Atualizar"
+                >
+                  <RefreshCw size={14} className={loadingInstances ? "animate-spin" : ""} />
+                </button>
+              </div>
+
+              {/* API Status */}
+              {apiReachable === false && (
+                <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+                  <p className="text-sm text-amber-400 font-medium mb-2">
+                    ⚠️ Evolution API não configurada corretamente
+                  </p>
+                  <p className="text-xs text-slate-400 mb-3">
+                    Para usar o WhatsApp, você precisa configurar o arquivo <code className="bg-slate-800 px-1.5 py-0.5 rounded">.env</code> com os dados do seu servidor Evolution API:
+                  </p>
+                  <code className="block p-3 bg-slate-900 rounded-lg text-xs text-slate-400 font-mono overflow-x-auto">
+                    EVOLUTION_API_URL=&quot;https://SEU-SERVIDOR.com&quot;<br />
+                    EVOLUTION_API_KEY=&quot;SEU-TOKEN-AQUI&quot;<br />
+                    EVOLUTION_INSTANCE_NAME=&quot;pdv-zapflow&quot;
+                  </code>
+                  <p className="text-xs text-slate-500 mt-3">
+                    Não tem um servidor? Visite <a href="https://doc.evolution-api.com" target="_blank" rel="noopener noreferrer" className="text-green-400 hover:underline">doc.evolution-api.com</a> para mais informações.
+                  </p>
+                </div>
+              )}
+
+              {/* Instance Result */}
+              {instanceResult && (
+                <div
+                  className={`p-3 rounded-lg text-sm ${
+                    instanceResult.success
+                      ? "bg-green-500/10 border border-green-500/30"
+                      : "bg-red-500/10 border border-red-500/30"
+                  }`}
+                >
+                  <div className={`flex items-center gap-2 ${instanceResult.success ? "text-green-400" : "text-red-400"}`}>
+                    {instanceResult.success ? (
+                      <CheckCircle size={16} />
+                    ) : (
+                      <XCircle size={16} />
+                    )}
+                    <span className="font-medium">{instanceResult.message}</span>
+                  </div>
+                  {instanceResult.details && (
+                    <p className="text-xs text-slate-400 mt-2 ml-6">{instanceResult.details}</p>
+                  )}
+                  {instanceResult.help && (
+                    <p className="text-xs text-slate-500 mt-1 ml-6">{instanceResult.help}</p>
+                  )}
+                </div>
+              )}
+
+              {/* Instance Info */}
+              {loadingInstances ? (
+                <div className="flex items-center justify-center py-6">
+                  <Loader2 size={20} className="text-slate-400 animate-spin" />
+                </div>
+              ) : apiReachable === true && (
+                <div className="space-y-4">
+                  {/* Active Instance */}
+                  {instanceExists && activeInstanceName && (
+                    <div className={`p-4 rounded-xl border-2 ${
+                      whatsappStatus?.connected 
+                        ? "bg-green-500/10 border-green-500/50" 
+                        : "bg-slate-700/50 border-slate-600"
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2.5 rounded-lg ${
+                            whatsappStatus?.connected ? "bg-green-500/20" : "bg-slate-600"
+                          }`}>
+                            {whatsappStatus?.connected ? (
+                              <Wifi size={20} className="text-green-500" />
+                            ) : (
+                              <WifiOff size={20} className="text-yellow-500" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-slate-200">
+                              {activeInstanceName}
+                            </p>
+                            <p className={`text-xs ${whatsappStatus?.connected ? "text-green-400" : "text-yellow-400"}`}>
+                              {whatsappStatus?.connected 
+                                ? "Conectado e pronto para uso"
+                                : "Clique em \"Gerar QR Code\" para conectar"
+                              }
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setActiveInstanceName("");
+                            setInstanceExists(false);
+                            setInstanceResult(null);
+                            setWhatsappStatus({ configured: true, connected: false });
+                          }}
+                          className="text-xs text-slate-400 hover:text-slate-200 px-3 py-1.5 hover:bg-slate-600 rounded-lg transition-colors"
+                        >
+                          Trocar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Select or Create Instance */}
+                  {!instanceExists && (
+                    <div className="space-y-4">
+                      {/* Existing Instances as Cards */}
+                      {availableInstances.length > 0 && !showCreateNew && (
+                        <div className="space-y-3">
+                          <label className="block text-sm font-medium text-slate-300">
+                            Instâncias Disponíveis
+                          </label>
+                          <div className="grid gap-3">
+                            {availableInstances.map((instance) => (
+                              <button
+                                key={instance.name}
+                                onClick={() => selectInstance(instance.name, instance.connected)}
+                                className={`flex items-center gap-4 w-full p-4 rounded-xl border-2 transition-all ${
+                                  instance.connected
+                                    ? "bg-green-500/10 border-green-500/50 hover:border-green-500"
+                                    : "bg-slate-700/50 border-slate-600 hover:border-slate-500"
+                                }`}
+                              >
+                                {/* Status Icon */}
+                                <div className={`p-2.5 rounded-lg ${
+                                  instance.connected ? "bg-green-500/20" : "bg-slate-600"
+                                }`}>
+                                  {instance.connected ? (
+                                    <Wifi size={20} className="text-green-500" />
+                                  ) : (
+                                    <WifiOff size={20} className="text-slate-400" />
+                                  )}
+                                </div>
+                                
+                                {/* Instance Info */}
+                                <div className="flex-1 text-left">
+                                  <p className="text-sm font-medium text-slate-200">
+                                    {instance.name}
+                                  </p>
+                                  <p className={`text-xs ${instance.connected ? "text-green-400" : "text-slate-500"}`}>
+                                    {instance.connected 
+                                      ? `Conectado${instance.number ? ` • ${instance.number}` : ""}`
+                                      : "Desconectado"
+                                    }
+                                  </p>
+                                </div>
+
+                                {/* Action */}
+                                <div className={`px-3 py-1.5 rounded-lg text-xs font-medium ${
+                                  instance.connected
+                                    ? "bg-green-500/20 text-green-400"
+                                    : "bg-slate-600 text-slate-300"
+                                }`}>
+                                  {instance.connected ? "Usar" : "Conectar"}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                          <div className="pt-3 border-t border-slate-600">
+                            <button
+                              onClick={() => setShowCreateNew(true)}
+                              className="flex items-center gap-2 text-sm text-slate-400 hover:text-green-400 transition-colors"
+                            >
+                              <Plus size={14} />
+                              Criar nova instância
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Create New Instance */}
+                      {(availableInstances.length === 0 || showCreateNew) && (
+                        <div className="p-4 bg-slate-700/50 rounded-xl space-y-4">
+                          {showCreateNew && availableInstances.length > 0 && (
+                            <button
+                              onClick={() => setShowCreateNew(false)}
+                              className="text-xs text-slate-400 hover:text-slate-200 transition-colors"
+                            >
+                              ← Voltar para lista
+                            </button>
+                          )}
+                          <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                              {availableInstances.length === 0 ? "Criar Instância" : "Nova Instância"}
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Digite o nome da instância..."
+                              value={newInstanceName}
+                              onChange={(e) => setNewInstanceName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && newInstanceName.trim()) {
+                                  createInstance();
+                                }
+                              }}
+                              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-green-500"
+                            />
+                            <p className="text-xs text-slate-500 mt-2">
+                              Use letras, números e hífens. Ex: minha-loja, pdv-01
+                            </p>
+                          </div>
+                          <button
+                            onClick={createInstance}
+                            disabled={creatingInstance || !newInstanceName.trim()}
+                            className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white text-sm font-medium rounded-xl transition-colors"
+                          >
+                            {creatingInstance ? (
+                              <Loader2 size={16} className="animate-spin" />
+                            ) : (
+                              <Plus size={16} />
+                            )}
+                            Criar Instância
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Test Message */}
+          {whatsappStatus?.connected && (
+            <div className="space-y-4 pt-4 border-t border-slate-700">
+              <h3 className="text-sm font-medium text-slate-200">Enviar mensagem de teste</h3>
+              
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  placeholder="Número (ex: 5511999999999)"
+                  value={testNumber}
+                  onChange={(e) => setTestNumber(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-green-500"
+                />
+                <textarea
+                  placeholder="Mensagem"
+                  value={testMessage}
+                  onChange={(e) => setTestMessage(e.target.value)}
+                  rows={3}
+                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-green-500 resize-none"
+                />
+                <button
+                  onClick={sendTestMessage}
+                  disabled={sendingTest || !testNumber.trim()}
+                  className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-medium rounded-xl transition-colors"
+                >
+                  {sendingTest ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    <Send size={18} />
+                  )}
+                  Enviar Teste
+                </button>
+              </div>
+
+              {testResult && (
+                <div
+                  className={`flex items-center gap-2 p-3 rounded-lg text-sm ${
+                    testResult.success
+                      ? "bg-green-500/10 text-green-400"
+                      : "bg-red-500/10 text-red-400"
+                  }`}
+                >
+                  {testResult.success ? (
+                    <CheckCircle size={16} />
+                  ) : (
+                    <XCircle size={16} />
+                  )}
+                  {testResult.message}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* ── Store Settings (placeholder) ───────────────────────────── */}
       <section className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden opacity-60">
         <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-700">
@@ -99,24 +788,6 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      {/* ── WhatsApp Settings (placeholder) ────────────────────────── */}
-      <section className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden opacity-60">
-        <div className="flex items-center gap-3 px-6 py-4 border-b border-slate-700">
-          <div className="p-2 bg-slate-700 rounded-xl">
-            <MessageCircle size={18} className="text-slate-400" />
-          </div>
-          <div className="flex-1">
-            <h2 className="font-semibold text-slate-100 text-sm">Configurações do WhatsApp</h2>
-            <p className="text-slate-500 text-xs">Notificações e mensagens automáticas via ZapFlow</p>
-          </div>
-          <span className="text-[10px] font-bold bg-slate-700 text-slate-400 px-2.5 py-1 rounded-full">
-            Em breve
-          </span>
-        </div>
-        <div className="px-6 py-8 text-center text-slate-600 text-sm">
-          Integração com WhatsApp será configurada em breve.
-        </div>
-      </section>
     </div>
   );
 }

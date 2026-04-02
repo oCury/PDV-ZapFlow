@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { BottomNav } from "./bottom-nav";
 import { OfflineBanner } from "./offline-banner";
+import { LowStockAlert } from "./low-stock-alert";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -15,7 +16,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-900">
+    <div className="flex h-screen overflow-hidden theme-bg-base">
       <OfflineBanner />
       {/* Sidebar: desktop only */}
       <div className="hidden lg:flex">
@@ -30,8 +31,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <main
         className={
           isPdvPage
-            ? "flex-1 overflow-hidden bg-slate-900"
-            : "flex-1 overflow-y-auto overflow-x-hidden bg-slate-900 p-6 pb-24 md:pb-0"
+            ? "flex-1 overflow-hidden theme-bg-base"
+            : "flex-1 overflow-y-auto overflow-x-hidden theme-bg-base p-6 pb-24 md:pb-0"
         }
       >
         {children}
@@ -39,6 +40,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Bottom Nav: mobile only */}
       <BottomNav />
+
+      {/* Low Stock Alert - shown on all pages */}
+      <LowStockAlert />
     </div>
   );
 }

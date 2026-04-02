@@ -85,6 +85,7 @@ export function MultiPaymentModal({
       setErrorMessage(null);
       setCustomerPhone("");
       setCustomerSearchResult(null);
+      setCustomerNotFound(false);
       setShowAddPayment(false);
       setAddPaymentMethod(null);
       setAddPaymentAmount("");
@@ -118,26 +119,48 @@ export function MultiPaymentModal({
     }
   }, [paymentStatus, saleId]);
 
+  const [customerNotFound, setCustomerNotFound] = useState(false);
+
   const searchCustomer = async () => {
     const phone = customerPhone.replace(/\D/g, "");
     if (phone.length < 10) return;
+    
+    setCustomerNotFound(false);
+    
     try {
+      // Try to find customer with flexible search
       const res = await fetch(`/api/customers/search?phone=${encodeURIComponent(phone)}`);
+      
       if (res.ok) {
         const data = await res.json();
+        console.log("[Payment] Customer found:", data);
         setCustomerSearchResult(data);
+        setCustomerNotFound(false);
+      } else if (res.status === 404) {
+        // Customer not found - show message but don't create automatically
+        console.log("[Payment] Customer not found for phone:", phone);
+        setCustomerSearchResult(null);
+        setCustomerNotFound(true);
       } else {
         setCustomerSearchResult(null);
+        setCustomerNotFound(false);
       }
-    } catch {
+    } catch (err) {
+      console.error("[Payment] Customer search error:", err);
       setCustomerSearchResult(null);
+      setCustomerNotFound(false);
     }
   };
 
   const addPayment = (method: PaymentMethod, amount: number) => {
     if (amount <= 0) return;
     setPayments((prev) => [...prev, { paymentMethod: method, amount }]);
-    if (method === "CASH") setAmountReceived(amount.toString());
+    if (method === "CASH") {
+      setAmountReceived(amount.toString());
+      // Calculate change for cash payments
+      const changeAmount = amount - totalAmount;
+      setChange(changeAmount > 0 ? changeAmount : 0);
+    }
     setShowAddPayment(false);
     setAddPaymentMethod(null);
     setAddPaymentAmount("");
@@ -312,9 +335,26 @@ export function MultiPaymentModal({
                 </button>
               </div>
               {customerSearchResult && (
-                <p className="text-sm text-brand-green">
-                  ✓ Cliente encontrado: {customerSearchResult.name || customerSearchResult.id}
-                </p>
+                <div className="p-3 rounded-lg bg-brand-green/10 border border-brand-green/30">
+                  <p className="text-sm text-brand-green font-medium">
+                    ✓ Cliente vinculado: {customerSearchResult.name || `ID: ${customerSearchResult.id.slice(0, 8)}`}
+                  </p>
+                  {(customerSearchResult as { loyalty_points?: number }).loyalty_points !== undefined && (
+                    <p className="text-xs text-slate-400 mt-1">
+                      Pontos de fidelidade: {(customerSearchResult as { loyalty_points?: number }).loyalty_points}
+                    </p>
+                  )}
+                </div>
+              )}
+              {customerNotFound && !customerSearchResult && (
+                <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+                  <p className="text-sm text-yellow-400 font-medium">
+                    Cliente não encontrado
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Verifique o número ou cadastre o cliente em Clientes
+                  </p>
+                </div>
               )}
             </div>
 
@@ -408,6 +448,12 @@ export function MultiPaymentModal({
               </div>
               {remaining > 0.01 && (
                 <p className="text-amber-400 text-sm">Faltam R$ {remaining.toFixed(2)}</p>
+              )}
+              {/* Show change for cash overpayment */}
+              {payments.some(p => p.paymentMethod === "CASH") && paidSoFar > totalAmount && (
+                <p className="text-lg font-bold text-brand-green">
+                  Troco: R$ {(paidSoFar - totalAmount).toFixed(2)}
+                </p>
               )}
             </div>
 

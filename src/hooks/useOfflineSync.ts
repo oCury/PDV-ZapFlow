@@ -33,9 +33,9 @@ export interface QueueSalePayload {
 }
 
 export function useOfflineSync() {
-  const [isOnline, setIsOnline] = useState(
-    typeof navigator !== "undefined" ? navigator.onLine : true
-  );
+  // Always start as online to prevent hydration mismatch
+  // The actual state is updated in useEffect after mount
+  const [isOnline, setIsOnline] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const syncLock = useRef(false);
@@ -99,6 +99,9 @@ export function useOfflineSync() {
   // ── Online / offline listeners ─────────────────────────────────────────────
 
   useEffect(() => {
+    // Set actual online state after mount (avoids hydration mismatch)
+    setIsOnline(navigator.onLine);
+
     const handleOnline = () => {
       setIsOnline(true);
       syncPendingSales();
@@ -110,6 +113,11 @@ export function useOfflineSync() {
 
     // Check pending sales on mount
     getPendingSales().then((p) => setPendingCount(p.length));
+
+    // If online and there are pending sales, sync them
+    if (navigator.onLine) {
+      syncPendingSales();
+    }
 
     return () => {
       window.removeEventListener("online", handleOnline);

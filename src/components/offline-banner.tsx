@@ -1,13 +1,20 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { WifiOff, RefreshCw, CloudUpload } from "lucide-react";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 
 export function OfflineBanner() {
+  const [mounted, setMounted] = useState(false);
   const { isOnline, isSyncing, pendingCount, syncNow } = useOfflineSync();
 
-  // Nothing to show when online and no pending sales
-  if (isOnline && pendingCount === 0) return null;
+  // Prevent hydration mismatch - only render after mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Nothing to show when online and no pending sales (or not mounted yet)
+  if (!mounted || (isOnline && pendingCount === 0)) return null;
 
   return (
     <div

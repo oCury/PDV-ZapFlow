@@ -14,6 +14,7 @@ import {
   Phone,
   Search,
   MessageCircle,
+  Send,
 } from "lucide-react";
 
 interface OpenOrder {
@@ -53,6 +54,10 @@ export default function TablesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ number: "", name: "", capacity: "4", whatsapp: "" });
+  const [whatsappModal, setWhatsappModal] = useState<TableRow | null>(null);
+  const [whatsappMessage, setWhatsappMessage] = useState("");
+  const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
+  const [whatsappResult, setWhatsappResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const fetchTables = useCallback(async () => {
     setLoading(true);
@@ -142,6 +147,51 @@ export default function TablesPage() {
     }
   };
 
+  const openWhatsappModal = (table: TableRow) => {
+    setWhatsappModal(table);
+    setWhatsappResult(null);
+    const defaultMsg = table.openOrder
+      ? `Olá! Sua comanda na Mesa ${table.number} está em R$ ${Number(table.openOrder.total_amount).toFixed(2)}. Aguardamos seu pagamento!`
+      : `Olá! Sua mesa ${table.number} está disponível. Aguardamos você!`;
+    setWhatsappMessage(defaultMsg);
+  };
+
+  const sendWhatsappMessage = async () => {
+    if (!whatsappModal?.whatsapp || !whatsappMessage.trim()) return;
+    
+    setSendingWhatsapp(true);
+    setWhatsappResult(null);
+    
+    try {
+      const res = await fetch("/api/whatsapp/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          number: whatsappModal.whatsapp,
+          message: whatsappMessage,
+          type: "text",
+        }),
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        setWhatsappResult({ success: true, message: "Mensagem enviada com sucesso!" });
+        setTimeout(() => {
+          setWhatsappModal(null);
+          setWhatsappMessage("");
+          setWhatsappResult(null);
+        }, 2000);
+      } else {
+        setWhatsappResult({ success: false, message: data.error || "Erro ao enviar mensagem" });
+      }
+    } catch {
+      setWhatsappResult({ success: false, message: "Erro de conexão" });
+    } finally {
+      setSendingWhatsapp(false);
+    }
+  };
+
   const available = tables.filter((t) => t.status === "AVAILABLE");
   const occupied = tables.filter((t) => t.status === "OCCUPIED");
 
@@ -202,6 +252,7 @@ export default function TablesPage() {
                     key={t.id}
                     table={t}
                     onViewOrder={() => t.openOrder && router.push(`/pdv?orderId=${t.openOrder.id}`)}
+                    onSendWhatsapp={t.whatsapp ? () => openWhatsappModal(t) : undefined}
                   />
                 ))}
               </div>
@@ -225,6 +276,7 @@ export default function TablesPage() {
                       setOrderCustomer(null);
                       setError(null);
                     }}
+                    onSendWhatsapp={t.whatsapp ? () => openWhatsappModal(t) : undefined}
                   />
                 ))}
               </div>
@@ -360,6 +412,83 @@ export default function TablesPage() {
           </div>
         </div>
       )}
+
+      {/* WhatsApp Message Modal */}
+      {whatsappModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setWhatsappModal(null)} />
+          <div className="relative bg-slate-800 border border-slate-700 rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                <MessageCircle size={20} className="text-green-500" />
+                Enviar WhatsApp
+              </h2>
+              <button onClick={() => setWhatsappModal(null)} className="text-slate-500 hover:text-slate-200">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="p-3 bg-slate-700/50 rounded-xl">
+                <p className="text-xs text-slate-500 mb-1">Mesa</p>
+                <p className="text-sm text-slate-200 font-medium">
+                  {whatsappModal.number}{whatsappModal.name ? ` - ${whatsappModal.name}` : ""}
+                </p>
+                <p className="text-xs text-slate-500 mt-1">
+                  WhatsApp: {formatPhone(whatsappModal.whatsapp || "")}
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">Mensagem</label>
+                <textarea
+                  value={whatsappMessage}
+                  onChange={(e) => setWhatsappMessage(e.target.value)}
+                  rows={4}
+                  className={inputCls + " resize-none"}
+                  placeholder="Digite a mensagem..."
+                />
+              </div>
+
+              {whatsappResult && (
+                <div
+                  className={`flex items-center gap-2 p-3 rounded-lg text-sm ${
+                    whatsappResult.success
+                      ? "bg-green-500/10 text-green-400"
+                      : "bg-red-500/10 text-red-400"
+                  }`}
+                >
+                  {whatsappResult.success ? <Check size={16} /> : <X size={16} />}
+                  {whatsappResult.message}
+                </div>
+              )}
+              
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setWhatsappModal(null)}
+                  className="flex-1 px-4 py-3 rounded-2xl border border-slate-600 text-sm font-semibold text-slate-300 hover:bg-slate-700 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={sendWhatsappMessage}
+                  disabled={sendingWhatsapp || !whatsappMessage.trim()}
+                  className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-bold py-3 rounded-2xl text-sm flex items-center justify-center gap-2 transition-colors"
+                >
+                  {sendingWhatsapp ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Send size={16} />
+                  )}
+                  Enviar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -377,10 +506,12 @@ function TableCard({
   table,
   onViewOrder,
   onOpenOrder,
+  onSendWhatsapp,
 }: {
   table: TableRow;
   onViewOrder?: () => void;
   onOpenOrder?: () => void;
+  onSendWhatsapp?: () => void;
 }) {
   const isOccupied = table.status === "OCCUPIED";
 
@@ -411,9 +542,14 @@ function TableCard({
         <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-600">
           <span>Capacidade: {table.capacity} pessoas</span>
           {table.whatsapp && (
-            <span className="flex items-center gap-1 text-green-500/90" title={`WhatsApp: ${formatPhone(table.whatsapp)}`}>
+            <button
+              onClick={(e) => { e.stopPropagation(); onSendWhatsapp?.(); }}
+              className="flex items-center gap-1 text-green-500 hover:text-green-400 transition-colors"
+              title={`Enviar WhatsApp: ${formatPhone(table.whatsapp)}`}
+            >
               <MessageCircle size={12} />
-            </span>
+              <span className="text-[10px]">Enviar</span>
+            </button>
           )}
         </div>
       </div>
@@ -433,22 +569,44 @@ function TableCard({
           <p className="text-xl font-bold text-brand-green">
             R$ {Number(table.openOrder.total_amount).toFixed(2)}
           </p>
-          <button
-            onClick={onViewOrder}
-            className="w-full py-2.5 rounded-xl bg-brand-green hover:bg-brand-green-hover text-primary-dark text-sm font-bold transition-colors flex items-center justify-center gap-2"
-          >
-            <Check size={14} />
-            Ver Comanda
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={onViewOrder}
+              className="flex-1 py-2.5 rounded-xl bg-brand-green hover:bg-brand-green-hover text-primary-dark text-sm font-bold transition-colors flex items-center justify-center gap-2"
+            >
+              <Check size={14} />
+              Ver Comanda
+            </button>
+            {onSendWhatsapp && (
+              <button
+                onClick={onSendWhatsapp}
+                className="py-2.5 px-3 rounded-xl bg-green-600 hover:bg-green-700 text-white transition-colors"
+                title="Enviar mensagem WhatsApp"
+              >
+                <Send size={14} />
+              </button>
+            )}
+          </div>
         </div>
       ) : (
-        <button
-          onClick={onOpenOrder}
-          className="w-full py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-semibold transition-colors flex items-center justify-center gap-2"
-        >
-          <Plus size={14} />
-          Abrir Comanda
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={onOpenOrder}
+            className="flex-1 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+          >
+            <Plus size={14} />
+            Abrir Comanda
+          </button>
+          {onSendWhatsapp && (
+            <button
+              onClick={onSendWhatsapp}
+              className="py-2.5 px-3 rounded-xl bg-green-600 hover:bg-green-700 text-white transition-colors"
+              title="Enviar mensagem WhatsApp"
+            >
+              <Send size={14} />
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
