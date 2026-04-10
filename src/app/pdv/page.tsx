@@ -12,6 +12,7 @@ import {
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { useProducts, type Product } from "@/hooks/useProducts";
 import { MultiPaymentModal } from "@/components/pos/multi-payment-modal";
+import { CustomerIdentificationModal } from "@/components/pos/customer-identification-modal";
 import { PosProductGrid } from "@/components/pos/pos-product-grid";
 import { CartSidebar } from "@/components/pos/cart-sidebar";
 import { CartBottomSheet } from "@/components/pos/cart-bottom-sheet";
@@ -27,6 +28,8 @@ function PdvContent() {
   const [scanStatus, setScanStatus] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<{ id: string; name?: string | null; loyalty_points?: number } | null>(null);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isCartSheetOpen, setIsCartSheetOpen] = useState(false);
   const [isCashRegisterOpen, setIsCashRegisterOpen] = useState(false);
@@ -175,9 +178,15 @@ function PdvContent() {
     if (tableOrder && tableId) {
       handleOpenTableOrder();
     } else {
-      setIsPaymentModalOpen(true);
+      setIsCustomerModalOpen(true);
       setIsCartSheetOpen(false);
     }
+  };
+
+  const handleCustomerConfirm = (customer: { id: string; name?: string | null; loyalty_points?: number } | null) => {
+    setSelectedCustomer(customer);
+    setIsCustomerModalOpen(false);
+    setIsPaymentModalOpen(true);
   };
 
   const handleOpenTableOrder = useCallback(async () => {
@@ -217,6 +226,7 @@ function PdvContent() {
   const handlePaymentSuccess = useCallback(() => {
     setCart([]);
     setIsPaymentModalOpen(false);
+    setSelectedCustomer(null);
     refetch();
   }, [refetch]);
 
@@ -366,12 +376,19 @@ function PdvContent() {
         isOpeningOrder={isOpeningOrder}
       />
 
+      <CustomerIdentificationModal
+        isOpen={isCustomerModalOpen}
+        onClose={() => setIsCustomerModalOpen(false)}
+        onConfirm={handleCustomerConfirm}
+      />
+
       <MultiPaymentModal
         isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
         totalAmount={total}
         cartItems={cart}
         onPaymentSuccess={handlePaymentSuccess}
+        selectedCustomer={selectedCustomer}
       />
 
       <CashRegisterDrawer

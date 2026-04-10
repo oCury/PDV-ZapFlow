@@ -3,9 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
 /**
- * GET /api/customers/search?phone=…&cpf=…
+ * GET /api/customers/search?phone=…&cpf=…&name=…&q=…
  *
- * Searches customers by phone number or CPF (M3).
+ * Searches customers by phone, CPF, or name.
+ * The `q` param auto-detects: digits → phone search, text → name search.
  * Returns loyalty_points so the checkout UI can display available discount.
  */
 export async function GET(req: Request) {
@@ -16,25 +17,27 @@ export async function GET(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
-    const phoneRaw = searchParams.get("phone")?.replace(/\D/g, "") ?? "";
+    let phoneRaw = searchParams.get("phone")?.replace(/\D/g, "") ?? "";
     const cpfRaw = searchParams.get("cpf")?.replace(/\D/g, "") ?? "";
+    let nameQuery = searchParams.get("name")?.trim() ?? "";
+    const q = searchParams.get("q")?.trim() ?? "";
 
-    if (!phoneRaw && !cpfRaw) {
+    // Auto-detect: if q is mostly digits, treat as phone; otherwise as name
+    if (q) {
+      const digits = q.replace(/\D/g, "");
+      if (digits.length >= 8 && digits.length / q.replace(/\s/g, "").length > 0.6) {
+        phoneRaw = digits;
+      } else {
+        nameQuery = q;
+      }
+    }
+
+    if (!phoneRaw && !cpfRaw && !nameQuery) {
       return NextResponse.json(
-        { error: "Informe telefone ou CPF para buscar" },
+        { error: "Informe telefone, nome ou CPF para buscar" },
         { status: 400 }
       );
     }
-
-    if (phoneRaw && phoneRaw.length < 10) {
-      return NextResponse.json(
-        { error: "Telefone deve ter pelo menos 10 dígitos" },
-        { status: 400 }
-      );
-    }
-
-    // Search using raw SQL to normalize phone numbers (remove non-digits before comparing)
-    console.log("[Customer Search] Phone:", phoneRaw, "CPF:", cpfRaw);
 
     type CustomerResult = {
       id: string;
@@ -47,36 +50,42 @@ export async function GET(req: Request) {
       created_at: Date;
     };
 
-    let customer: CustomerResult | null = null;
+    let customers: CustomerResult[] = [];
 
-    // Try phone search using raw SQL to normalize
+    // Phone search
     if (phoneRaw.length >= 8) {
-      // Get last 8-9 digits for matching (handles DDD variations)
       const last9 = phoneRaw.slice(-9);
       const last8 = phoneRaw.slice(-8);
-      
-      // Use raw SQL to match normalized phone numbers
-      const results = await prisma.$queryRaw<CustomerResult[]>`
+
+      customers = await prisma.$queryRaw<CustomerResult[]>`
         SELECT id, name, phone, whatsapp, email, cpf, loyalty_points, created_at
-        FROM "Customer"
-        WHERE 
+        FROM "customers"
+        WHERE
           REGEXP_REPLACE(phone, '[^0-9]', '', 'g') LIKE ${'%' + last9}
           OR REGEXP_REPLACE(phone, '[^0-9]', '', 'g') LIKE ${'%' + last8}
           OR REGEXP_REPLACE(whatsapp, '[^0-9]', '', 'g') LIKE ${'%' + last9}
           OR REGEXP_REPLACE(whatsapp, '[^0-9]', '', 'g') LIKE ${'%' + last8}
           OR REGEXP_REPLACE(phone, '[^0-9]', '', 'g') = ${phoneRaw}
           OR REGEXP_REPLACE(whatsapp, '[^0-9]', '', 'g') = ${phoneRaw}
-        LIMIT 1
+        LIMIT 10
       `;
-      
-      if (results.length > 0) {
-        customer = results[0];
-      }
     }
 
-    // Fallback: try CPF search
-    if (!customer && cpfRaw.length >= 11) {
-      customer = await prisma.customer.findFirst({
+    // Name search
+    if (customers.length === 0 && nameQuery.length >= 2) {
+      const pattern = `%${nameQuery}%`;
+      customers = await prisma.$queryRaw<CustomerResult[]>`
+        SELECT id, name, phone, whatsapp, email, cpf, loyalty_points, created_at
+        FROM "customers"
+        WHERE LOWER(name) LIKE LOWER(${pattern})
+        ORDER BY name ASC
+        LIMIT 10
+      `;
+    }
+
+    // Fallback: CPF search
+    if (customers.length === 0 && cpfRaw.length >= 11) {
+      const byCpf = await prisma.customer.findFirst({
         where: { cpf: cpfRaw },
         select: {
           id: true,
@@ -89,18 +98,23 @@ export async function GET(req: Request) {
           created_at: true,
         },
       });
+      if (byCpf) customers = [byCpf];
     }
-    
-    console.log("[Customer Search] Found:", customer?.name || "none");
 
-    if (!customer) {
+    if (customers.length === 0) {
       return NextResponse.json(
         { error: "Cliente não encontrado" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json(customer);
+    // If single result, return object directly (backwards compatible)
+    // If multiple, return array
+    if (customers.length === 1) {
+      return NextResponse.json(customers[0]);
+    }
+
+    return NextResponse.json({ results: customers });
   } catch (error) {
     console.error("Customer search failed:", error);
     return NextResponse.json({ error: "Erro interno" }, { status: 500 });
@@ -142,7 +156,7 @@ export async function POST(req: Request) {
 
     // First check if customer exists by normalized phone
     const existingByPhone = await prisma.$queryRaw<{ id: string }[]>`
-      SELECT id FROM "Customer"
+      SELECT id FROM "customers"
       WHERE REGEXP_REPLACE(phone, '[^0-9]', '', 'g') = ${phoneNormalized}
       LIMIT 1
     `;

@@ -11,8 +11,6 @@ import {
   CircleDollarSign,
   Plus,
   Trash2,
-  Phone,
-  Search,
   Printer,
   X,
 } from "lucide-react";
@@ -21,12 +19,19 @@ import type { PaymentSplit } from "@/lib/validations/pos";
 import { NumericKeypad } from "./numeric-keypad";
 import { ReceiptPrint } from "./receipt-print";
 
+interface SelectedCustomer {
+  id: string;
+  name?: string | null;
+  loyalty_points?: number;
+}
+
 interface MultiPaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
   totalAmount: number;
   cartItems: CartItem[];
   onPaymentSuccess: () => void;
+  selectedCustomer?: SelectedCustomer | null;
 }
 
 type PaymentMethod = "CASH" | "CARD" | "PIX";
@@ -54,6 +59,7 @@ export function MultiPaymentModal({
   totalAmount,
   cartItems,
   onPaymentSuccess,
+  selectedCustomer,
 }: MultiPaymentModalProps) {
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("IDLE");
   const [payments, setPayments] = useState<PaymentSplit[]>([]);
@@ -62,8 +68,6 @@ export function MultiPaymentModal({
   const [intentId, setIntentId] = useState<string | null>(null);
   const [saleId, setSaleId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [customerPhone, setCustomerPhone] = useState("");
-  const [customerSearchResult, setCustomerSearchResult] = useState<{ id: string; name?: string } | null>(null);
   const [showAddPayment, setShowAddPayment] = useState(false);
   const [addPaymentMethod, setAddPaymentMethod] = useState<PaymentMethod | null>(null);
   const [addPaymentAmount, setAddPaymentAmount] = useState("");
@@ -83,9 +87,6 @@ export function MultiPaymentModal({
       setIntentId(null);
       setSaleId(null);
       setErrorMessage(null);
-      setCustomerPhone("");
-      setCustomerSearchResult(null);
-      setCustomerNotFound(false);
       setShowAddPayment(false);
       setAddPaymentMethod(null);
       setAddPaymentAmount("");
@@ -119,39 +120,6 @@ export function MultiPaymentModal({
     }
   }, [paymentStatus, saleId]);
 
-  const [customerNotFound, setCustomerNotFound] = useState(false);
-
-  const searchCustomer = async () => {
-    const phone = customerPhone.replace(/\D/g, "");
-    if (phone.length < 10) return;
-    
-    setCustomerNotFound(false);
-    
-    try {
-      // Try to find customer with flexible search
-      const res = await fetch(`/api/customers/search?phone=${encodeURIComponent(phone)}`);
-      
-      if (res.ok) {
-        const data = await res.json();
-        console.log("[Payment] Customer found:", data);
-        setCustomerSearchResult(data);
-        setCustomerNotFound(false);
-      } else if (res.status === 404) {
-        // Customer not found - show message but don't create automatically
-        console.log("[Payment] Customer not found for phone:", phone);
-        setCustomerSearchResult(null);
-        setCustomerNotFound(true);
-      } else {
-        setCustomerSearchResult(null);
-        setCustomerNotFound(false);
-      }
-    } catch (err) {
-      console.error("[Payment] Customer search error:", err);
-      setCustomerSearchResult(null);
-      setCustomerNotFound(false);
-    }
-  };
-
   const addPayment = (method: PaymentMethod, amount: number) => {
     if (amount <= 0) return;
     setPayments((prev) => [...prev, { paymentMethod: method, amount }]);
@@ -181,7 +149,7 @@ export function MultiPaymentModal({
       totalAmount,
       paymentMethod: "CASH",
       items: buildItemsPayload(cartItems),
-      customerId: customerSearchResult?.id,
+      customerId: selectedCustomer?.id,
     };
 
     try {
@@ -261,7 +229,7 @@ export function MultiPaymentModal({
           totalAmount,
           items: buildItemsPayload(cartItems),
           payments,
-          customerId: customerSearchResult?.id,
+          customerId: selectedCustomer?.id,
         }),
       });
 
@@ -312,51 +280,19 @@ export function MultiPaymentModal({
               Total: R$ {totalAmount.toFixed(2)}
             </h2>
 
-            {/* Quick Customer Search */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                <Phone size={16} />
-                Cliente (Telefone/WhatsApp)
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="tel"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                  placeholder="(11) 99999-9999"
-                  className="flex-1 px-4 py-3 rounded-xl bg-slate-700 border border-slate-600 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-green/50"
-                />
-                <button
-                  type="button"
-                  onClick={searchCustomer}
-                  className="touch-target min-w-[48px] min-h-[48px] flex items-center justify-center rounded-xl bg-slate-600 hover:bg-slate-500"
-                >
-                  <Search size={20} className="text-white" />
-                </button>
-              </div>
-              {customerSearchResult && (
-                <div className="p-3 rounded-lg bg-brand-green/10 border border-brand-green/30">
-                  <p className="text-sm text-brand-green font-medium">
-                    ✓ Cliente vinculado: {customerSearchResult.name || `ID: ${customerSearchResult.id.slice(0, 8)}`}
-                  </p>
-                  {(customerSearchResult as { loyalty_points?: number }).loyalty_points !== undefined && (
-                    <p className="text-xs text-slate-400 mt-1">
-                      Pontos de fidelidade: {(customerSearchResult as { loyalty_points?: number }).loyalty_points}
-                    </p>
-                  )}
-                </div>
-              )}
-              {customerNotFound && !customerSearchResult && (
-                <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
-                  <p className="text-sm text-yellow-400 font-medium">
-                    Cliente não encontrado
-                  </p>
+            {/* Customer Info */}
+            {selectedCustomer && (
+              <div className="p-3 rounded-lg bg-brand-green/10 border border-brand-green/30">
+                <p className="text-sm text-brand-green font-medium">
+                  Cliente: {selectedCustomer.name || `ID: ${selectedCustomer.id.slice(0, 8)}`}
+                </p>
+                {selectedCustomer.loyalty_points !== undefined && selectedCustomer.loyalty_points > 0 && (
                   <p className="text-xs text-slate-400 mt-1">
-                    Verifique o número ou cadastre o cliente em Clientes
+                    Pontos de fidelidade: {selectedCustomer.loyalty_points}
                   </p>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
 
             {/* Payment splits */}
             <div className="space-y-2">
@@ -537,7 +473,7 @@ export function MultiPaymentModal({
                 amount: p.amount,
               }))}
               change={change}
-              customerName={customerSearchResult?.name ?? undefined}
+              customerName={selectedCustomer?.name ?? undefined}
               printedAt={new Date()}
             />
             <div className="flex flex-col items-center justify-center text-center p-8 bg-slate-800 rounded-xl text-white">

@@ -1,14 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, Plus, AlertTriangle, Eye } from "lucide-react";
+import { Loader2, Plus, AlertTriangle, Eye, FileText } from "lucide-react";
 import { ProductGrid } from "@/components/product-grid";
 import { ProductModal, type ProductFormData } from "@/components/product-modal";
+import { NfeImportModal } from "@/components/nfe-import-modal";
 import { useProducts } from "@/hooks/useProducts";
 
 export default function ProductsPage() {
   const { products, loading, error, refetch } = useProducts();
   const [modalOpen, setModalOpen] = useState(false);
+  const [nfeModalOpen, setNfeModalOpen] = useState(false);
   const [editProduct, setEditProduct] = useState<ProductFormData | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -35,6 +37,7 @@ export default function ProductsPage() {
       cost_price: product.cost_price.toString(),
       sell_price: product.sell_price.toString(),
       stock_quantity: product.stock_quantity.toString(),
+      min_stock: product.min_stock.toString(),
       category: product.category,
       image_url: product.image_url || "",
     });
@@ -83,13 +86,22 @@ export default function ProductsPage() {
             </span>
           )}
           {isAdmin && (
-            <button
-              onClick={openNewProduct}
-              className="bg-brand-green hover:bg-brand-green-hover text-primary-dark font-semibold px-5 py-2.5 rounded-2xl transition-colors duration-200 text-sm flex items-center gap-2"
-            >
-              <Plus size={18} />
-              Novo Produto
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setNfeModalOpen(true)}
+                className="bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold px-4 py-2.5 rounded-2xl transition-colors duration-200 text-sm flex items-center gap-2 border border-slate-600"
+              >
+                <FileText size={16} />
+                Importar NF-e
+              </button>
+              <button
+                onClick={openNewProduct}
+                className="bg-brand-green hover:bg-brand-green-hover text-primary-dark font-semibold px-5 py-2.5 rounded-2xl transition-colors duration-200 text-sm flex items-center gap-2"
+              >
+                <Plus size={18} />
+                Novo Produto
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -110,12 +122,19 @@ export default function ProductsPage() {
       )}
 
       {isAdmin && (
-        <ProductModal
-          isOpen={modalOpen}
-          onClose={() => setModalOpen(false)}
-          onSaved={refetch}
-          editProduct={editProduct}
-        />
+        <>
+          <ProductModal
+            isOpen={modalOpen}
+            onClose={() => setModalOpen(false)}
+            onSaved={refetch}
+            editProduct={editProduct}
+          />
+          <NfeImportModal
+            isOpen={nfeModalOpen}
+            onClose={() => setNfeModalOpen(false)}
+            onImported={refetch}
+          />
+        </>
       )}
 
       {deleteConfirm && (

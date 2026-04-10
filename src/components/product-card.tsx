@@ -7,6 +7,7 @@ export interface ProductCardProps {
   sell_price: number;
   cost_price?: number;
   stock_quantity: number;
+  min_stock?: number;
   category: string;
   image_url: string | null;
   onAddToCart?: (id: string) => void;
@@ -20,6 +21,7 @@ export function ProductCard({
   barcode,
   sell_price,
   stock_quantity,
+  min_stock = 5,
   category,
   image_url,
   onAddToCart,
@@ -27,7 +29,8 @@ export function ProductCard({
   onDelete,
 }: ProductCardProps) {
   const inStock = stock_quantity > 0;
-  const lowStock = stock_quantity > 0 && stock_quantity <= 10;
+  const lowStock = stock_quantity > 0 && stock_quantity <= min_stock;
+  const goodStock = stock_quantity > min_stock;
 
   return (
     <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden hover:border-slate-600 transition-colors duration-200 flex flex-col">
@@ -90,7 +93,9 @@ export function ProductCard({
             <p className="text-xl font-bold text-brand-green">
               R$ {sell_price.toFixed(2)}
             </p>
-            <p className="text-xs text-slate-500">
+            <p className={`text-xs font-bold ${
+              !inStock ? "text-red-500" : lowStock ? "text-amber-400" : "text-emerald-400"
+            }`}>
               {stock_quantity} em estoque
             </p>
           </div>

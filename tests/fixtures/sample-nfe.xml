@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe">
+  <NFe xmlns="http://www.portalfiscal.inf.br/nfe">
+    <infNFe versao="4.00" Id="NFe35240612345678000195550010000001231234567890">
+      <ide>
+        <cUF>35</cUF>
+        <cNF>12345678</cNF>
+        <natOp>VENDA DE MERCADORIA</natOp>
+        <mod>55</mod>
+        <serie>1</serie>
+        <nNF>123</nNF>
+        <dhEmi>2026-04-06T10:00:00-03:00</dhEmi>
+      </ide>
+      <emit>
+        <CNPJ>12345678000195</CNPJ>
+        <xNome>DISTRIBUIDORA EXEMPLO LTDA</xNome>
+        <xFant>EXEMPLO DISTRIBUIDORA</xFant>
+      </emit>
+      <det nItem="1">
+        <prod>
+          <cProd>001</cProd>
+          <cEAN>7891234567890</cEAN>
+          <xProd>ARROZ TIPO 1 5KG</xProd>
+          <NCM>10063021</NCM>
+          <CFOP>5102</CFOP>
+          <uCom>UN</uCom>
+          <qCom>10.0000</qCom>
+          <vUnCom>22.9000</vUnCom>
+          <vProd>229.00</vProd>
+          <cEANTrib>7891234567890</cEANTrib>
+          <uTrib>UN</uTrib>
+          <qTrib>10.0000</qTrib>
+          <vUnTrib>22.9000</vUnTrib>
+          <indTot>1</indTot>
+        </prod>
+      </det>
+      <det nItem="2">
+        <prod>
+          <cProd>002</cProd>
+          <cEAN>7899876543210</cEAN>
+          <xProd>FEIJAO CARIOCA 1KG</xProd>
+          <NCM>07133319</NCM>
+          <CFOP>5102</CFOP>
+          <uCom>UN</uCom>
+          <qCom>5.0000</qCom>
+          <vUnCom>8.5000</vUnCom>
+          <vProd>42.50</vProd>
+          <cEANTrib>7899876543210</cEANTrib>
+          <uTrib>UN</uTrib>
+          <qTrib>5.0000</qTrib>
+          <vUnTrib>8.5000</vUnTrib>
+          <indTot>1</indTot>
+        </prod>
+      </det>
+      <det nItem="3">
+        <prod>
+          <cProd>003</cProd>
+          <cEAN>7891011121314</cEAN>
+          <xProd>OLEO DE SOJA 900ML</xProd>
+          <NCM>15079011</NCM>
+          <CFOP>5102</CFOP>
+          <uCom>UN</uCom>
+          <qCom>3.0000</qCom>
+          <vUnCom>7.9900</vUnCom>
+          <vProd>23.97</vProd>
+          <cEANTrib>7891011121314</cEANTrib>
+          <uTrib>UN</uTrib>
+          <qTrib>3.0000</qTrib>
+          <vUnTrib>7.9900</vUnTrib>
+          <indTot>1</indTot>
+        </prod>
+      </det>
+      <det nItem="4">
+        <prod>
+          <cProd>004</cProd>
+          <cEAN>7895432167890</cEAN>
+          <xProd>ACUCAR CRISTAL 1KG</xProd>
+          <NCM>17019900</NCM>
+          <CFOP>5102</CFOP>
+          <uCom>KG</uCom>
+          <qCom>8.0000</qCom>
+          <vUnCom>4.9900</vUnCom>
+          <vProd>39.92</vProd>
+          <cEANTrib>7895432167890</cEANTrib>
+          <uTrib>KG</uTrib>
+          <qTrib>8.0000</qTrib>
+          <vUnTrib>4.9900</vUnTrib>
+          <indTot>1</indTot>
+        </prod>
+      </det>
+      <total>
+        <ICMSTot>
+          <vProd>335.39</vProd>
+          <vNF>335.39</vNF>
+        </ICMSTot>
+      </total>
+    </infNFe>
+  </NFe>
+</nfeProc>

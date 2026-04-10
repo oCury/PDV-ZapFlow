@@ -10,6 +10,7 @@ export interface ProductFormData {
   cost_price: string;
   sell_price: string;
   stock_quantity: string;
+  min_stock: string;
   category: string;
   image_url: string;
 }
@@ -20,6 +21,7 @@ const EMPTY_FORM: ProductFormData = {
   cost_price: "",
   sell_price: "",
   stock_quantity: "",
+  min_stock: "",
   category: "",
   image_url: "",
 };
@@ -75,6 +77,7 @@ export function ProductModal({
         cost_price: parseFloat(form.cost_price) || 0,
         sell_price: parseFloat(form.sell_price),
         stock_quantity: parseInt(form.stock_quantity) || 0,
+        min_stock: parseInt(form.min_stock) || 0,
         category: form.category.trim(),
         image_url: form.image_url.trim() || null,
       };
@@ -138,7 +141,7 @@ export function ProductModal({
               value={form.name}
               onChange={handleChange}
               placeholder="Ex: Coca-Cola 350ml"
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 font-bold placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
             />
           </div>
 
@@ -151,7 +154,7 @@ export function ProductModal({
               value={form.barcode}
               onChange={handleChange}
               placeholder="Ex: 7894900011517"
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-mono text-gray-900 font-bold placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
             />
           </div>
 
@@ -168,7 +171,7 @@ export function ProductModal({
                 value={form.cost_price}
                 onChange={handleChange}
                 placeholder="0.00"
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 font-bold placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
               />
             </div>
             <div>
@@ -183,15 +186,15 @@ export function ProductModal({
                 value={form.sell_price}
                 onChange={handleChange}
                 placeholder="0.00"
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 font-bold placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Quantidade em Estoque
+                Estoque Atual
               </label>
               <input
                 name="stock_quantity"
@@ -200,19 +203,33 @@ export function ProductModal({
                 value={form.stock_quantity}
                 onChange={handleChange}
                 placeholder="0"
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 font-bold placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Categoria / Nicho *
+                Estoque Mínimo
+              </label>
+              <input
+                name="min_stock"
+                type="number"
+                min="0"
+                value={form.min_stock}
+                onChange={handleChange}
+                placeholder="0"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 font-bold placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Categoria *
               </label>
               <input
                 name="category"
                 value={form.category}
                 onChange={handleChange}
                 placeholder="Ex: Bebidas"
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 font-bold placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
               />
             </div>
           </div>
@@ -226,7 +243,7 @@ export function ProductModal({
               value={form.image_url}
               onChange={handleChange}
               placeholder="https://..."
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 font-bold placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
             />
           </div>
 

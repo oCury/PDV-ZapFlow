@@ -16,6 +16,7 @@ import {
   ChevronRight,
   LogOut,
   MessageCircle,
+  Gift,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -32,6 +33,7 @@ const navItems: NavItem[] = [
   { href: "/tables", label: "Mesas", icon: UtensilsCrossed, adminOnly: false },
   { href: "/products", label: "Produtos", icon: Package, adminOnly: false },
   { href: "/customers", label: "Clientes", icon: UserCheck, adminOnly: true },
+  { href: "/cashback", label: "Cashback", icon: Gift, adminOnly: true },
   { href: "/sales", label: "Vendas", icon: Receipt, adminOnly: true },
   { href: "/followups", label: "Follow-up", icon: MessageCircle, adminOnly: true },
   { href: "/staff", label: "Equipe", icon: Users, adminOnly: true },

@@ -27,13 +27,19 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const isConnected = result.data?.state === "open";
+    // Evolution API v2 may return state at different levels
+    const data = result.data as Record<string, unknown> | undefined;
+    const instanceData = (data?.instance || data) as Record<string, unknown> | undefined;
+    const state = String(instanceData?.state || data?.state || "");
+    const isConnected = state === "open";
+
+    console.log("[WhatsApp Status]", { instanceName, state, rawData: JSON.stringify(result.data) });
 
     return NextResponse.json({
       configured: true,
       connected: isConnected,
-      state: result.data?.state,
-      instanceName: result.data?.instanceName || instanceName,
+      state,
+      instanceName: String(instanceData?.instanceName || data?.instanceName || instanceName),
       message: isConnected
         ? "WhatsApp conectado e pronto para uso."
         : "WhatsApp desconectado. Escaneie o QR Code para conectar.",

@@ -7,10 +7,11 @@
 
 import { prisma } from "@/lib/prisma";
 import evolutionAPI from "@/lib/whatsapp/evolution-api";
+import { getNumericSetting } from "@/lib/settings";
 
-const FOLLOWUP_DAYS = 15;
-const CASHBACK_PERCENT = 0.10; // 10%
-const FOLLOWUP_TYPE = "15_DAY_CASHBACK";
+const DEFAULT_FOLLOWUP_DAYS = 15;
+const DEFAULT_CASHBACK_PERCENT = 0.10; // 10%
+const FOLLOWUP_TYPE = "CASHBACK";
 
 export interface FollowupResult {
   customerId: string;
@@ -52,14 +53,15 @@ function getWhatsAppNumber(customer: { whatsapp: string | null; phone: string })
 function generateMessage(
   customerName: string | null,
   cashbackAmount: number,
-  storeName: string
+  storeName: string,
+  days: number
 ): string {
   const name = customerName || "Cliente";
   const cashbackFormatted = cashbackAmount.toFixed(2);
 
   return `Olá ${name}! 👋
 
-Faz 15 dias que você esteve conosco e queremos agradecer! 🙏
+Faz ${days} dias que você esteve conosco e queremos agradecer! 🙏
 
 Como forma de agradecimento, acabamos de adicionar *R$ ${cashbackFormatted}* em créditos de fidelidade na sua conta. 🎁
 
@@ -75,7 +77,7 @@ Esperamos você de volta! 💚
  * Sales from exactly N days ago with a customer who has phone/WhatsApp
  * and hasn't received a follow-up for that sale yet
  */
-export async function findEligibleSales(daysAgo: number = FOLLOWUP_DAYS) {
+export async function findEligibleSales(daysAgo: number = DEFAULT_FOLLOWUP_DAYS) {
   const targetDate = new Date();
   targetDate.setDate(targetDate.getDate() - daysAgo);
   
@@ -115,8 +117,8 @@ export async function findEligibleSales(daysAgo: number = FOLLOWUP_DAYS) {
 /**
  * Calculate cashback amount and points
  */
-export function calculateCashback(saleAmount: number): { cashbackAmount: number; pointsToAdd: number } {
-  const cashbackAmount = Number(saleAmount) * CASHBACK_PERCENT;
+export function calculateCashback(saleAmount: number, cashbackPercent: number = DEFAULT_CASHBACK_PERCENT): { cashbackAmount: number; pointsToAdd: number } {
+  const cashbackAmount = Number(saleAmount) * cashbackPercent;
   const pointsToAdd = Math.floor(cashbackAmount);
   return { cashbackAmount, pointsToAdd };
 }
@@ -137,11 +139,13 @@ export async function processSingleFollowup(
     };
   },
   storeName: string,
-  dryRun: boolean = false
+  dryRun: boolean = false,
+  cashbackPercent: number = DEFAULT_CASHBACK_PERCENT,
+  followupDays: number = DEFAULT_FOLLOWUP_DAYS
 ): Promise<FollowupResult> {
   const customer = sale.customer;
   const saleAmount = Number(sale.total_amount);
-  const { cashbackAmount, pointsToAdd } = calculateCashback(saleAmount);
+  const { cashbackAmount, pointsToAdd } = calculateCashback(saleAmount, cashbackPercent);
 
   const whatsappNumber = getWhatsAppNumber(customer);
 
@@ -171,7 +175,7 @@ export async function processSingleFollowup(
     };
   }
 
-  const message = generateMessage(customer.name, cashbackAmount, storeName);
+  const message = generateMessage(customer.name, cashbackAmount, storeName, followupDays);
 
   let whatsappStatus: "SENT" | "FAILED" = "FAILED";
   let errorMessage: string | undefined;
@@ -230,13 +234,23 @@ export async function processSingleFollowup(
 
 /**
  * Process all eligible follow-ups
+ * Reads followup_days and cashback_percent from DB settings.
+ * The daysAgo parameter, if provided, overrides the DB setting (useful for manual testing).
  */
 export async function processFollowups(
-  daysAgo: number = FOLLOWUP_DAYS,
+  daysAgo?: number,
   dryRun: boolean = false
 ): Promise<FollowupSummary> {
   const storeName = process.env.STORE_NAME || "Nossa Loja";
-  const eligibleSales = await findEligibleSales(daysAgo);
+
+  // Read settings from DB
+  const configuredDays = await getNumericSetting("followup_days");
+  const configuredPercent = await getNumericSetting("cashback_percent");
+
+  const effectiveDays = daysAgo ?? (configuredDays || DEFAULT_FOLLOWUP_DAYS);
+  const effectivePercent = (configuredPercent || (DEFAULT_CASHBACK_PERCENT * 100)) / 100;
+
+  const eligibleSales = await findEligibleSales(effectiveDays);
 
   const results: FollowupResult[] = [];
   let sent = 0;
@@ -254,7 +268,9 @@ export async function processFollowups(
         customer: sale.customer,
       },
       storeName,
-      dryRun
+      dryRun,
+      effectivePercent,
+      effectiveDays
     );
 
     results.push(result);
@@ -291,6 +307,9 @@ export async function getFollowupStats() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  const configuredDays = await getNumericSetting("followup_days");
+  const effectiveDays = configuredDays || DEFAULT_FOLLOWUP_DAYS;
+
   const [total, sentToday, totalCashback, pending] = await Promise.all([
     prisma.customerFollowup.count(),
     prisma.customerFollowup.count({
@@ -303,7 +322,7 @@ export async function getFollowupStats() {
       _sum: { cashback_amount: true },
       where: { whatsapp_status: { in: ["SENT", "FAILED"] } },
     }),
-    findEligibleSales(FOLLOWUP_DAYS),
+    findEligibleSales(effectiveDays),
   ]);
 
   return {
@@ -311,6 +330,7 @@ export async function getFollowupStats() {
     sentToday,
     totalCashbackGiven: Number(totalCashback._sum.cashback_amount || 0),
     pendingToday: pending.length,
+    configuredDays: effectiveDays,
   };
 }
 

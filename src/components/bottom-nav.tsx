@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ShoppingCart, Package, Receipt, Settings } from "lucide-react";
+import { ShoppingCart, Package, Receipt, Settings, Gift } from "lucide-react";
 import { useEffect, useState } from "react";
 
 interface NavItem {
@@ -15,6 +15,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { href: "/pdv", label: "PDV", icon: ShoppingCart, adminOnly: false },
   { href: "/products", label: "Produtos", icon: Package, adminOnly: false },
+  { href: "/cashback", label: "Cashback", icon: Gift, adminOnly: true },
   { href: "/sales", label: "Vendas", icon: Receipt, adminOnly: true },
   { href: "/settings", label: "Config.", icon: Settings, adminOnly: true },
 ];

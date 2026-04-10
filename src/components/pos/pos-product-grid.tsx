@@ -109,6 +109,15 @@ function PosProductCard({
   onClick: () => void;
 }) {
   const outOfStock = product.stock_quantity <= 0;
+  const minStock = product.min_stock || 5;
+  const lowStock = product.stock_quantity > 0 && product.stock_quantity <= minStock;
+  const goodStock = product.stock_quantity > minStock;
+
+  const stockColor = outOfStock
+    ? "text-red-500"
+    : lowStock
+      ? "text-amber-400"
+      : "text-emerald-400";
 
   return (
     <button
@@ -144,7 +153,9 @@ function PosProductCard({
         <p className="text-sm sm:text-xl font-bold text-brand-green">
           R$ {product.sell_price.toFixed(2)}
         </p>
-        <p className="text-[10px] sm:text-xs text-slate-400">{product.stock_quantity} un.</p>
+        <p className={`text-[10px] sm:text-xs font-bold ${stockColor}`}>
+          {product.stock_quantity} un.
+        </p>
       </div>
 
       <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover:border-brand-green/30 transition-colors pointer-events-none" />

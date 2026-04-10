@@ -22,6 +22,7 @@ interface FollowupStats {
   sentToday: number;
   totalCashbackGiven: number;
   pendingToday: number;
+  configuredDays: number;
 }
 
 interface Followup {
@@ -284,7 +285,7 @@ export default function FollowupsPage() {
             <Users size={48} className="mx-auto mb-3 text-slate-600" />
             <p className="font-medium">Nenhum follow-up enviado ainda</p>
             <p className="text-sm mt-1">
-              Os follow-ups serão enviados automaticamente 15 dias após cada compra
+              Os follow-ups serão enviados automaticamente {stats?.configuredDays || 15} dias após cada compra
             </p>
           </div>
         ) : (
@@ -373,7 +374,7 @@ export default function FollowupsPage() {
             <span className="text-brand-green">•</span>
             <span>
               <strong className="text-slate-300">Diariamente às 8h</strong>, o sistema verifica
-              clientes que compraram há exatamente 15 dias
+              clientes que compraram há exatamente {stats?.configuredDays || 15} dias
             </span>
           </li>
           <li className="flex items-start gap-2">

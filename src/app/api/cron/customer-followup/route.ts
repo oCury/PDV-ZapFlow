@@ -21,7 +21,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const isTest = searchParams.get("test") === "true";
     const dryRun = searchParams.get("dryRun") === "true";
-    const daysAgo = parseInt(searchParams.get("daysAgo") || "15", 10);
+    const daysAgoParam = searchParams.get("daysAgo");
+    const daysAgo = daysAgoParam ? parseInt(daysAgoParam, 10) : undefined;
 
     // Verify cron secret (Vercel sets this automatically)
     // Skip verification in test mode for local development
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
     
     const body = await request.json().catch(() => ({}));
     const dryRun = body.dryRun === true;
-    const daysAgo = parseInt(body.daysAgo || "15", 10);
+    const daysAgo = body.daysAgo ? parseInt(body.daysAgo, 10) : undefined;
 
     console.log(`[Manual Followup] Starting... (daysAgo: ${daysAgo}, dryRun: ${dryRun})`);
 

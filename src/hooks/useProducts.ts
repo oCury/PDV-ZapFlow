@@ -9,6 +9,7 @@ export interface Product {
   sell_price: number;
   cost_price: number;
   stock_quantity: number;
+  min_stock: number;
   category: string;
   image_url: string | null;
 }

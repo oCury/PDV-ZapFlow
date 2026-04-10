@@ -19,6 +19,8 @@ import {
   WifiOff,
   Plus,
   Server,
+  Bell,
+  Save,
 } from "lucide-react";
 
 type ThemeOption = "light" | "dark" | "system";
@@ -59,48 +61,47 @@ export default function SettingsPage() {
   const [creatingInstance, setCreatingInstance] = useState(false);
   const [instanceResult, setInstanceResult] = useState<{ success: boolean; message: string; details?: string; help?: string } | null>(null);
   const [apiReachable, setApiReachable] = useState<boolean | null>(null);
-  const [showCreateNew, setShowCreateNew] = useState(false);
+
+  // Notification settings
+  const [followupDays, setFollowupDays] = useState("15");
+  const [cashbackPercent, setCashbackPercent] = useState("10");
+  const [loadingSettings, setLoadingSettings] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsResult, setSettingsResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const fetchInstances = useCallback(async () => {
     setLoadingInstances(true);
     try {
       const res = await fetch("/api/whatsapp/instance");
       const data = await res.json();
-      
+
       if (data.configured && data.reachable) {
         setApiReachable(true);
-        setWhatsappStatus(prev => ({ ...prev, configured: true, connected: false }));
-        
-        // Get list of available instances with status
-        const instances = data.instances || [];
-        const instancesWithStatus: Array<{ name: string; connected: boolean; number?: string }> = [];
-        
-        console.log("[Settings] Instances received:", instances);
-        
-        for (const inst of instances) {
-          const name = inst.instanceName || inst.name || "";
-          if (!name) continue;
-          
-          // Get status for each instance
+
+        // Only show the saved instance — don't list all from Evolution API
+        if (activeInstanceName) {
           try {
-            const statusRes = await fetch(`/api/whatsapp/status?instance=${encodeURIComponent(name)}`);
+            const statusRes = await fetch(`/api/whatsapp/status?instance=${encodeURIComponent(activeInstanceName)}`);
             const statusData = await statusRes.json();
-            instancesWithStatus.push({
-              name,
-              connected: statusData.connected || false,
-              number: inst.owner || statusData.number,
-            });
+            const isConnected = statusData.connected || false;
+            setAvailableInstances([{
+              name: activeInstanceName,
+              connected: isConnected,
+              number: statusData.number,
+            }]);
+            // Set proper status including connected state
+            setWhatsappStatus({ configured: true, connected: isConnected, state: statusData.state });
+            if (isConnected) {
+              setQrCode(null);
+            }
           } catch {
-            instancesWithStatus.push({ name, connected: false });
+            setAvailableInstances([{ name: activeInstanceName, connected: false }]);
+            setWhatsappStatus({ configured: true, connected: false });
           }
-        }
-        
-        console.log("[Settings] Instances with status:", instancesWithStatus);
-        setAvailableInstances(instancesWithStatus);
-        
-        // If there are instances but no active one selected, show selection
-        if (instancesWithStatus.length > 0 && !activeInstanceName) {
-          setShowCreateNew(false);
+        } else {
+          // No saved instance — show create form
+          setAvailableInstances([]);
+          setWhatsappStatus({ configured: true, connected: false });
         }
       } else if (data.configured) {
         setApiReachable(false);
@@ -116,25 +117,69 @@ export default function SettingsPage() {
     }
   }, [activeInstanceName]);
 
-  const selectInstance = (name: string, isConnected: boolean) => {
-    setActiveInstanceName(name);
-    setInstanceExists(true);
-    
-    if (isConnected) {
-      setWhatsappStatus({ configured: true, connected: true });
-      setInstanceResult({
-        success: true,
-        message: `Conectado à instância "${name}"!`,
+  const fetchSettings = useCallback(async () => {
+    setLoadingSettings(true);
+    try {
+      const res = await fetch("/api/settings");
+      const data = await res.json();
+      if (data.success && data.settings) {
+        setFollowupDays(data.settings.followup_days || "15");
+        setCashbackPercent(data.settings.cashback_percent || "10");
+
+        // Auto-load saved WhatsApp instance
+        const savedInstance = data.settings.whatsapp_instance;
+        if (savedInstance && !activeInstanceName) {
+          setActiveInstanceName(savedInstance);
+          setInstanceExists(true);
+        }
+      }
+    } catch {
+      console.error("Error fetching settings");
+    } finally {
+      setLoadingSettings(false);
+    }
+  }, [activeInstanceName]);
+
+  const saveNotificationSettings = async () => {
+    setSavingSettings(true);
+    setSettingsResult(null);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          settings: {
+            followup_days: followupDays,
+            cashback_percent: cashbackPercent,
+          },
+        }),
       });
-      setQrCode(null);
-    } else {
-      setWhatsappStatus({ configured: true, connected: false });
-      setInstanceResult({
-        success: true,
-        message: `Instância "${name}" selecionada. Clique em "Gerar QR Code" para conectar.`,
-      });
+      const data = await res.json();
+      if (data.success) {
+        setSettingsResult({ success: true, message: "Configurações salvas!" });
+      } else {
+        setSettingsResult({ success: false, message: data.error || "Erro ao salvar" });
+      }
+    } catch {
+      setSettingsResult({ success: false, message: "Erro de conexão" });
+    } finally {
+      setSavingSettings(false);
+      setTimeout(() => setSettingsResult(null), 3000);
     }
   };
+
+  const saveInstanceToSettings = async (name: string) => {
+    try {
+      await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ settings: { whatsapp_instance: name } }),
+      });
+    } catch {
+      console.error("Failed to save instance to settings");
+    }
+  };
+
 
   const createInstance = async () => {
     const instanceName = newInstanceName.trim();
@@ -165,6 +210,7 @@ export default function SettingsPage() {
         // Set the active instance name to the one just created
         setActiveInstanceName(instanceName);
         setInstanceExists(true);
+        saveInstanceToSettings(instanceName);
         // Check status for the new instance
         checkWhatsAppStatus(instanceName);
       } else {
@@ -196,6 +242,11 @@ export default function SettingsPage() {
       
       if (data.connected) {
         setQrCode(null);
+        setQrError(null);
+        setInstanceResult({
+          success: true,
+          message: `WhatsApp conectado com sucesso!`,
+        });
       }
     } catch {
       setWhatsappStatus({
@@ -283,7 +334,8 @@ export default function SettingsPage() {
 
   useEffect(() => {
     fetchInstances();
-  }, [fetchInstances]);
+    fetchSettings();
+  }, [fetchInstances, fetchSettings]);
 
   // Only check WhatsApp status if we have an active instance
   useEffect(() => {
@@ -292,13 +344,13 @@ export default function SettingsPage() {
     }
   }, [activeInstanceName, checkWhatsAppStatus]);
 
-  // Poll for connection status while showing QR code
+  // Poll for connection status while instance is not connected
   useEffect(() => {
-    if (whatsappStatus?.configured && !whatsappStatus.connected && qrCode && activeInstanceName) {
+    if (whatsappStatus?.configured && !whatsappStatus.connected && activeInstanceName && instanceExists) {
       const interval = setInterval(() => checkWhatsAppStatus(activeInstanceName), 5000);
       return () => clearInterval(interval);
     }
-  }, [whatsappStatus, qrCode, activeInstanceName, checkWhatsAppStatus]);
+  }, [whatsappStatus, activeInstanceName, instanceExists, checkWhatsAppStatus]);
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -586,6 +638,7 @@ export default function SettingsPage() {
                             setInstanceExists(false);
                             setInstanceResult(null);
                             setWhatsappStatus({ configured: true, connected: false });
+                            saveInstanceToSettings("");
                           }}
                           className="text-xs text-slate-400 hover:text-slate-200 px-3 py-1.5 hover:bg-slate-600 rounded-lg transition-colors"
                         >
@@ -595,118 +648,41 @@ export default function SettingsPage() {
                     </div>
                   )}
 
-                  {/* Select or Create Instance */}
+                  {/* Create New Instance (only when no saved instance) */}
                   {!instanceExists && (
-                    <div className="space-y-4">
-                      {/* Existing Instances as Cards */}
-                      {availableInstances.length > 0 && !showCreateNew && (
-                        <div className="space-y-3">
-                          <label className="block text-sm font-medium text-slate-300">
-                            Instâncias Disponíveis
-                          </label>
-                          <div className="grid gap-3">
-                            {availableInstances.map((instance) => (
-                              <button
-                                key={instance.name}
-                                onClick={() => selectInstance(instance.name, instance.connected)}
-                                className={`flex items-center gap-4 w-full p-4 rounded-xl border-2 transition-all ${
-                                  instance.connected
-                                    ? "bg-green-500/10 border-green-500/50 hover:border-green-500"
-                                    : "bg-slate-700/50 border-slate-600 hover:border-slate-500"
-                                }`}
-                              >
-                                {/* Status Icon */}
-                                <div className={`p-2.5 rounded-lg ${
-                                  instance.connected ? "bg-green-500/20" : "bg-slate-600"
-                                }`}>
-                                  {instance.connected ? (
-                                    <Wifi size={20} className="text-green-500" />
-                                  ) : (
-                                    <WifiOff size={20} className="text-slate-400" />
-                                  )}
-                                </div>
-                                
-                                {/* Instance Info */}
-                                <div className="flex-1 text-left">
-                                  <p className="text-sm font-medium text-slate-200">
-                                    {instance.name}
-                                  </p>
-                                  <p className={`text-xs ${instance.connected ? "text-green-400" : "text-slate-500"}`}>
-                                    {instance.connected 
-                                      ? `Conectado${instance.number ? ` • ${instance.number}` : ""}`
-                                      : "Desconectado"
-                                    }
-                                  </p>
-                                </div>
-
-                                {/* Action */}
-                                <div className={`px-3 py-1.5 rounded-lg text-xs font-medium ${
-                                  instance.connected
-                                    ? "bg-green-500/20 text-green-400"
-                                    : "bg-slate-600 text-slate-300"
-                                }`}>
-                                  {instance.connected ? "Usar" : "Conectar"}
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-                          <div className="pt-3 border-t border-slate-600">
-                            <button
-                              onClick={() => setShowCreateNew(true)}
-                              className="flex items-center gap-2 text-sm text-slate-400 hover:text-green-400 transition-colors"
-                            >
-                              <Plus size={14} />
-                              Criar nova instância
-                            </button>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Create New Instance */}
-                      {(availableInstances.length === 0 || showCreateNew) && (
-                        <div className="p-4 bg-slate-700/50 rounded-xl space-y-4">
-                          {showCreateNew && availableInstances.length > 0 && (
-                            <button
-                              onClick={() => setShowCreateNew(false)}
-                              className="text-xs text-slate-400 hover:text-slate-200 transition-colors"
-                            >
-                              ← Voltar para lista
-                            </button>
-                          )}
-                          <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">
-                              {availableInstances.length === 0 ? "Criar Instância" : "Nova Instância"}
-                            </label>
-                            <input
-                              type="text"
-                              placeholder="Digite o nome da instância..."
-                              value={newInstanceName}
-                              onChange={(e) => setNewInstanceName(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" && newInstanceName.trim()) {
-                                  createInstance();
-                                }
-                              }}
-                              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-green-500"
-                            />
-                            <p className="text-xs text-slate-500 mt-2">
-                              Use letras, números e hífens. Ex: minha-loja, pdv-01
-                            </p>
-                          </div>
-                          <button
-                            onClick={createInstance}
-                            disabled={creatingInstance || !newInstanceName.trim()}
-                            className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white text-sm font-medium rounded-xl transition-colors"
-                          >
-                            {creatingInstance ? (
-                              <Loader2 size={16} className="animate-spin" />
-                            ) : (
-                              <Plus size={16} />
-                            )}
-                            Criar Instância
-                          </button>
-                        </div>
-                      )}
+                    <div className="p-4 bg-slate-700/50 rounded-xl space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                          Criar Instância
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Digite o nome da instância..."
+                          value={newInstanceName}
+                          onChange={(e) => setNewInstanceName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && newInstanceName.trim()) {
+                              createInstance();
+                            }
+                          }}
+                          className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-green-500"
+                        />
+                        <p className="text-xs text-slate-500 mt-2">
+                          Use letras, números e hífens. Ex: minha-loja, pdv-01
+                        </p>
+                      </div>
+                      <button
+                        onClick={createInstance}
+                        disabled={creatingInstance || !newInstanceName.trim()}
+                        className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white text-sm font-medium rounded-xl transition-colors"
+                      >
+                        {creatingInstance ? (
+                          <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                          <Plus size={16} />
+                        )}
+                        Criar Instância
+                      </button>
                     </div>
                   )}
                 </div>
@@ -765,6 +741,111 @@ export default function SettingsPage() {
                 </div>
               )}
             </div>
+          )}
+        </div>
+      </section>
+
+      {/* ── Notification Settings ─────────────────────────────────── */}
+      <section className="theme-bg-surface rounded-2xl border theme-border overflow-hidden">
+        <div className="flex items-center gap-3 px-6 py-4 border-b theme-border">
+          <div className="p-2 bg-amber-500/10 rounded-xl">
+            <Bell size={18} className="text-amber-500" />
+          </div>
+          <div className="flex-1">
+            <h2 className="font-semibold theme-text-primary text-sm">Notificações de Cashback</h2>
+            <p className="theme-text-secondary text-xs">Configure o envio automático de cashback via WhatsApp</p>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-5">
+          {loadingSettings ? (
+            <div className="flex items-center justify-center py-6">
+              <Loader2 size={20} className="text-slate-400 animate-spin" />
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium theme-text-secondary mb-2">
+                    Dias após a compra para enviar
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="1"
+                      max="90"
+                      value={followupDays}
+                      onChange={(e) => setFollowupDays(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-slate-100 text-sm focus:outline-none focus:border-green-500"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-500">
+                      dias
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1.5">
+                    O cliente receberá a mensagem de cashback após este período (1-90 dias)
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium theme-text-secondary mb-2">
+                    Percentual de cashback
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="1"
+                      max="50"
+                      value={cashbackPercent}
+                      onChange={(e) => setCashbackPercent(e.target.value)}
+                      className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-slate-100 text-sm focus:outline-none focus:border-green-500"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-500">
+                      %
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1.5">
+                    Percentual do valor da compra dado como cashback em pontos (1-50%)
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={saveNotificationSettings}
+                  disabled={savingSettings}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white text-sm font-medium rounded-xl transition-colors"
+                >
+                  {savingSettings ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Save size={16} />
+                  )}
+                  Salvar
+                </button>
+
+                {settingsResult && (
+                  <span
+                    className={`flex items-center gap-1.5 text-sm ${
+                      settingsResult.success ? "text-green-400" : "text-red-400"
+                    }`}
+                  >
+                    {settingsResult.success ? <CheckCircle size={14} /> : <XCircle size={14} />}
+                    {settingsResult.message}
+                  </span>
+                )}
+              </div>
+
+              <div className="p-4 bg-slate-700/30 border border-slate-600/50 rounded-xl">
+                <p className="text-xs text-slate-400">
+                  <strong className="text-slate-300">Resumo:</strong> O sistema enviará automaticamente
+                  uma mensagem de cashback de <strong className="text-brand-green">{cashbackPercent}%</strong> via
+                  WhatsApp para clientes que compraram há{" "}
+                  <strong className="text-brand-green">{followupDays} dias</strong>. O envio acontece
+                  diariamente às 8h.
+                </p>
+              </div>
+            </>
           )}
         </div>
       </section>

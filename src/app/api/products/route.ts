@@ -31,6 +31,7 @@ export async function GET(req: Request) {
       sell_price: true,
       cost_price: true,
       stock_quantity: true,
+      min_stock: true,
       category: true,
       image_url: true,
     },
@@ -53,7 +54,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { name, barcode, cost_price, sell_price, stock_quantity, category, image_url } = body;
+    const { name, barcode, cost_price, sell_price, stock_quantity, min_stock, category, image_url } = body;
 
     if (!name || !barcode || sell_price == null || !category) {
       return NextResponse.json(
@@ -77,6 +78,7 @@ export async function POST(req: Request) {
         cost_price: cost_price ?? 0,
         sell_price,
         stock_quantity: stock_quantity ?? 0,
+        min_stock: min_stock ?? 0,
         category,
         image_url: image_url || null,
       },

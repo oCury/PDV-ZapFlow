@@ -190,3 +190,14 @@ model CustomerFollowup {
   @@index([sent_at])
   @@map("customer_followups")
 }
+
+// ─── Store Settings (Key-Value) ─────────────────────────────────────────────
+
+model StoreSettings {
+  id         String   @id @default(cuid())
+  key        String   @unique
+  value      String
+  updated_at DateTime @updatedAt
+
+  @@map("store_settings")
+}
