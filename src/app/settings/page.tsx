@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   Monitor,
   Moon,
@@ -19,8 +19,6 @@ import {
   WifiOff,
   Plus,
   Server,
-  Bell,
-  Save,
 } from "lucide-react";
 
 type ThemeOption = "light" | "dark" | "system";
@@ -62,12 +60,8 @@ export default function SettingsPage() {
   const [instanceResult, setInstanceResult] = useState<{ success: boolean; message: string; details?: string; help?: string } | null>(null);
   const [apiReachable, setApiReachable] = useState<boolean | null>(null);
 
-  // Notification settings
-  const [followupDays, setFollowupDays] = useState("15");
-  const [cashbackPercent, setCashbackPercent] = useState("10");
   const [loadingSettings, setLoadingSettings] = useState(false);
-  const [savingSettings, setSavingSettings] = useState(false);
-  const [settingsResult, setSettingsResult] = useState<{ success: boolean; message: string } | null>(null);
+  const hasLoadedInstance = useRef(false);
 
   const fetchInstances = useCallback(async () => {
     setLoadingInstances(true);
@@ -123,12 +117,10 @@ export default function SettingsPage() {
       const res = await fetch("/api/settings");
       const data = await res.json();
       if (data.success && data.settings) {
-        setFollowupDays(data.settings.followup_days || "15");
-        setCashbackPercent(data.settings.cashback_percent || "10");
-
-        // Auto-load saved WhatsApp instance
+        // Auto-load saved WhatsApp instance only on first load
         const savedInstance = data.settings.whatsapp_instance;
-        if (savedInstance && !activeInstanceName) {
+        if (savedInstance && !hasLoadedInstance.current) {
+          hasLoadedInstance.current = true;
           setActiveInstanceName(savedInstance);
           setInstanceExists(true);
         }
@@ -138,35 +130,7 @@ export default function SettingsPage() {
     } finally {
       setLoadingSettings(false);
     }
-  }, [activeInstanceName]);
-
-  const saveNotificationSettings = async () => {
-    setSavingSettings(true);
-    setSettingsResult(null);
-    try {
-      const res = await fetch("/api/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          settings: {
-            followup_days: followupDays,
-            cashback_percent: cashbackPercent,
-          },
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setSettingsResult({ success: true, message: "Configurações salvas!" });
-      } else {
-        setSettingsResult({ success: false, message: data.error || "Erro ao salvar" });
-      }
-    } catch {
-      setSettingsResult({ success: false, message: "Erro de conexão" });
-    } finally {
-      setSavingSettings(false);
-      setTimeout(() => setSettingsResult(null), 3000);
-    }
-  };
+  }, []);
 
   const saveInstanceToSettings = async (name: string) => {
     try {
@@ -332,10 +296,15 @@ export default function SettingsPage() {
 
   useEffect(() => setMounted(true), []);
 
+  // Initial load: fetch settings first, then instances
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
+
+  // Fetch instances whenever activeInstanceName changes
   useEffect(() => {
     fetchInstances();
-    fetchSettings();
-  }, [fetchInstances, fetchSettings]);
+  }, [fetchInstances]);
 
   // Only check WhatsApp status if we have an active instance
   useEffect(() => {
@@ -633,12 +602,14 @@ export default function SettingsPage() {
                           </div>
                         </div>
                         <button
-                          onClick={() => {
+                          onClick={async () => {
+                            await saveInstanceToSettings("");
                             setActiveInstanceName("");
                             setInstanceExists(false);
                             setInstanceResult(null);
+                            setQrCode(null);
+                            setQrError(null);
                             setWhatsappStatus({ configured: true, connected: false });
-                            saveInstanceToSettings("");
                           }}
                           className="text-xs text-slate-400 hover:text-slate-200 px-3 py-1.5 hover:bg-slate-600 rounded-lg transition-colors"
                         >
@@ -741,111 +712,6 @@ export default function SettingsPage() {
                 </div>
               )}
             </div>
-          )}
-        </div>
-      </section>
-
-      {/* ── Notification Settings ─────────────────────────────────── */}
-      <section className="theme-bg-surface rounded-2xl border theme-border overflow-hidden">
-        <div className="flex items-center gap-3 px-6 py-4 border-b theme-border">
-          <div className="p-2 bg-amber-500/10 rounded-xl">
-            <Bell size={18} className="text-amber-500" />
-          </div>
-          <div className="flex-1">
-            <h2 className="font-semibold theme-text-primary text-sm">Notificações de Cashback</h2>
-            <p className="theme-text-secondary text-xs">Configure o envio automático de cashback via WhatsApp</p>
-          </div>
-        </div>
-
-        <div className="p-6 space-y-5">
-          {loadingSettings ? (
-            <div className="flex items-center justify-center py-6">
-              <Loader2 size={20} className="text-slate-400 animate-spin" />
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium theme-text-secondary mb-2">
-                    Dias após a compra para enviar
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      min="1"
-                      max="90"
-                      value={followupDays}
-                      onChange={(e) => setFollowupDays(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-slate-100 text-sm focus:outline-none focus:border-green-500"
-                    />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-500">
-                      dias
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1.5">
-                    O cliente receberá a mensagem de cashback após este período (1-90 dias)
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium theme-text-secondary mb-2">
-                    Percentual de cashback
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      min="1"
-                      max="50"
-                      value={cashbackPercent}
-                      onChange={(e) => setCashbackPercent(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-slate-100 text-sm focus:outline-none focus:border-green-500"
-                    />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-500">
-                      %
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1.5">
-                    Percentual do valor da compra dado como cashback em pontos (1-50%)
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={saveNotificationSettings}
-                  disabled={savingSettings}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white text-sm font-medium rounded-xl transition-colors"
-                >
-                  {savingSettings ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : (
-                    <Save size={16} />
-                  )}
-                  Salvar
-                </button>
-
-                {settingsResult && (
-                  <span
-                    className={`flex items-center gap-1.5 text-sm ${
-                      settingsResult.success ? "text-green-400" : "text-red-400"
-                    }`}
-                  >
-                    {settingsResult.success ? <CheckCircle size={14} /> : <XCircle size={14} />}
-                    {settingsResult.message}
-                  </span>
-                )}
-              </div>
-
-              <div className="p-4 bg-slate-700/30 border border-slate-600/50 rounded-xl">
-                <p className="text-xs text-slate-400">
-                  <strong className="text-slate-300">Resumo:</strong> O sistema enviará automaticamente
-                  uma mensagem de cashback de <strong className="text-brand-green">{cashbackPercent}%</strong> via
-                  WhatsApp para clientes que compraram há{" "}
-                  <strong className="text-brand-green">{followupDays} dias</strong>. O envio acontece
-                  diariamente às 8h.
-                </p>
-              </div>
-            </>
           )}
         </div>
       </section>

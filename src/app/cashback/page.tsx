@@ -18,6 +18,9 @@ import {
   RotateCcw,
   Eye,
   EyeOff,
+  Settings,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 
 interface CashbackCustomer {
@@ -111,6 +114,13 @@ export default function CashbackPage() {
   const [templateSaved, setTemplateSaved] = useState(false);
   const [previewCustomer, setPreviewCustomer] = useState<CashbackCustomer | null>(null);
 
+  // Cashback settings
+  const [showSettings, setShowSettings] = useState(false);
+  const [cashbackPercent, setCashbackPercent] = useState("10");
+  const [followupDays, setFollowupDays] = useState("15");
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsResult, setSettingsResult] = useState<{ success: boolean; message: string } | null>(null);
+
   const fetchCashback = useCallback(async () => {
     setLoading(true);
     try {
@@ -130,9 +140,52 @@ export default function CashbackPage() {
     }
   }, []);
 
+  const fetchSettings = useCallback(async () => {
+    try {
+      const res = await fetch("/api/settings");
+      const data = await res.json();
+      if (data.success && data.settings) {
+        setCashbackPercent(data.settings.cashback_percent || "10");
+        setFollowupDays(data.settings.followup_days || "15");
+      }
+    } catch {
+      /* silent */
+    }
+  }, []);
+
+  const saveSettings = async () => {
+    setSavingSettings(true);
+    setSettingsResult(null);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          settings: {
+            cashback_percent: cashbackPercent,
+            followup_days: followupDays,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSettingsResult({ success: true, message: "Configurações salvas!" });
+        fetchCashback();
+      } else {
+        setSettingsResult({ success: false, message: data.error || "Erro ao salvar" });
+      }
+    } catch {
+      setSettingsResult({ success: false, message: "Erro de conexão" });
+    } finally {
+      setSavingSettings(false);
+      setTimeout(() => setSettingsResult(null), 3000);
+    }
+  };
+
   useEffect(() => {
     fetchCashback();
-  }, [fetchCashback]);
+    fetchSettings();
+  }, [fetchCashback, fetchSettings]);
 
   const filtered = customers.filter((c) => {
     const q = search.toLowerCase();
@@ -274,7 +327,18 @@ export default function CashbackPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setShowTemplateEditor(!showTemplateEditor)}
+            onClick={() => { setShowSettings(!showSettings); if (showTemplateEditor) setShowTemplateEditor(false); }}
+            className={`px-4 py-2.5 rounded-2xl transition-colors text-sm flex items-center gap-2 border ${
+              showSettings
+                ? "bg-brand-green/20 border-brand-green/50 text-brand-green"
+                : "bg-slate-700 hover:bg-slate-600 border-slate-600 text-slate-200"
+            } font-semibold`}
+          >
+            <Settings size={16} />
+            Configurações
+          </button>
+          <button
+            onClick={() => { setShowTemplateEditor(!showTemplateEditor); if (showSettings) setShowSettings(false); }}
             className={`px-4 py-2.5 rounded-2xl transition-colors text-sm flex items-center gap-2 border ${
               showTemplateEditor
                 ? "bg-brand-green/20 border-brand-green/50 text-brand-green"
@@ -294,6 +358,100 @@ export default function CashbackPage() {
           </button>
         </div>
       </div>
+
+      {/* Cashback Settings */}
+      {showSettings && (
+        <section className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden">
+          <div className="flex items-center gap-3 px-5 py-3 border-b border-slate-700 bg-slate-800/50">
+            <Settings size={16} className="text-brand-green" />
+            <h2 className="font-semibold text-slate-200 text-sm">Configurações do Cashback</h2>
+          </div>
+
+          <div className="p-5 space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-2">
+                  Percentual de cashback
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={cashbackPercent}
+                    onChange={(e) => setCashbackPercent(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-500">
+                    %
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-1.5">
+                  Percentual do valor da compra dado como cashback (1-50%)
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-2">
+                  Dias para envio automático
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="1"
+                    max="90"
+                    value={followupDays}
+                    onChange={(e) => setFollowupDays(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-500">
+                    dias
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-1.5">
+                  Mensagem de cashback enviada após este período (1-90 dias)
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={saveSettings}
+                disabled={savingSettings}
+                className="flex items-center gap-1.5 px-4 py-2 bg-brand-green hover:bg-brand-green-hover text-primary-dark text-xs font-bold rounded-xl transition-colors"
+              >
+                {savingSettings ? (
+                  <Loader2 size={14} className="animate-spin" />
+                ) : (
+                  <Save size={14} />
+                )}
+                Salvar
+              </button>
+
+              {settingsResult && (
+                <span
+                  className={`flex items-center gap-1.5 text-xs font-medium ${
+                    settingsResult.success ? "text-green-400" : "text-red-400"
+                  }`}
+                >
+                  {settingsResult.success ? <CheckCircle size={14} /> : <XCircle size={14} />}
+                  {settingsResult.message}
+                </span>
+              )}
+            </div>
+
+            <div className="p-3 bg-slate-900/50 border border-slate-700/50 rounded-xl">
+              <p className="text-xs text-slate-400">
+                O sistema enviará automaticamente uma mensagem de cashback de{" "}
+                <strong className="text-brand-green">{cashbackPercent}%</strong> via WhatsApp para
+                clientes que compraram há{" "}
+                <strong className="text-brand-green">{followupDays} dias</strong>. O envio acontece
+                diariamente às 8h.
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Message Template Editor */}
       {showTemplateEditor && (
