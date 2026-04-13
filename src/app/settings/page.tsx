@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import {
   Monitor,
   Moon,
@@ -54,12 +54,8 @@ export default function SettingsPage() {
   const [sendingTest, setSendingTest] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  const hasInitialized = useRef(false);
-
-  // Single initialization: load settings then check API
-  const initialize = useCallback(async () => {
-    if (hasInitialized.current) return;
-    hasInitialized.current = true;
+  // Load settings + check API + check instance status
+  const loadWhatsApp = useCallback(async () => {
     setLoading(true);
 
     try {
@@ -72,26 +68,19 @@ export default function SettingsPage() {
           savedInstance = settingsData.settings.whatsapp_instance;
         }
       } catch {
-        console.error("Failed to load settings");
+        // Settings not critical - continue
       }
 
       // Step 2: Check if Evolution API is reachable
-      try {
-        const apiRes = await fetch("/api/whatsapp/instance");
-        const apiData = await apiRes.json();
+      const apiRes = await fetch("/api/whatsapp/instance");
+      const apiData = await apiRes.json();
 
-        if (apiData.configured && apiData.reachable) {
-          setApiReachable(true);
-        } else {
-          setApiReachable(false);
-          setLoading(false);
-          return;
-        }
-      } catch {
+      if (!apiData.configured || !apiData.reachable) {
         setApiReachable(false);
-        setLoading(false);
         return;
       }
+
+      setApiReachable(true);
 
       // Step 3: If we have a saved instance, check its status
       if (savedInstance) {
@@ -109,6 +98,9 @@ export default function SettingsPage() {
           setInstanceConnected(false);
         }
       }
+    } catch (err) {
+      console.error("[WhatsApp] Init error:", err);
+      setApiReachable(false);
     } finally {
       setLoading(false);
     }
@@ -275,8 +267,8 @@ export default function SettingsPage() {
 
   // Initialize on mount
   useEffect(() => {
-    initialize();
-  }, [initialize]);
+    loadWhatsApp();
+  }, [loadWhatsApp]);
 
   // Poll for connection status while instance is not connected
   useEffect(() => {
@@ -369,10 +361,7 @@ export default function SettingsPage() {
             <p className="theme-text-secondary text-xs">Envie mensagens e notificações via WhatsApp</p>
           </div>
           <button
-            onClick={() => {
-              hasInitialized.current = false;
-              initialize();
-            }}
+            onClick={() => loadWhatsApp()}
             disabled={isLoading}
             className="p-2 theme-text-secondary hover:theme-text-primary hover:bg-slate-700/50 rounded-lg transition-colors"
           >
