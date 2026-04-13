@@ -9,7 +9,8 @@
       "WebSearch",
       "Bash(taskkill //F //IM node.exe)",
       "Bash(npm install:*)",
-      "Bash(ls \"C:/Projetos/PDV/PDV-ZapFlow/\"*.env*)"
+      "Bash(ls \"C:/Projetos/PDV/PDV-ZapFlow/\"*.env*)",
+      "Bash(curl:*)"
     ]
   }
 }
