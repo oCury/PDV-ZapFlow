@@ -37,7 +37,6 @@ export default function SettingsPage() {
   const [apiReachable, setApiReachable] = useState<boolean | null>(null);
   const [instanceConnected, setInstanceConnected] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [debugInfo, setDebugInfo] = useState("");
 
   const [loadingQR, setLoadingQR] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
@@ -72,7 +71,7 @@ export default function SettingsPage() {
 
     async function load() {
       setLoading(true);
-      setDebugInfo("Carregando...");
+      console.log("[WhatsApp]","Carregando...");
 
       try {
         // 1. Load saved instance from settings
@@ -82,10 +81,10 @@ export default function SettingsPage() {
           if (!cancelled) {
             const d = await r.json();
             savedInstance = d?.settings?.whatsapp_instance || "";
-            setDebugInfo(`Settings OK. Instância salva: "${savedInstance}"`);
+            console.log("[WhatsApp]",`Settings OK. Instância salva: "${savedInstance}"`);
           }
         } catch (e) {
-          if (!cancelled) setDebugInfo(`Settings erro: ${e}`);
+          if (!cancelled) console.log("[WhatsApp]",`Settings erro: ${e}`);
         }
 
         if (cancelled) return;
@@ -98,12 +97,12 @@ export default function SettingsPage() {
 
         if (apiData.configured && apiData.reachable) {
           setApiReachable(true);
-          setDebugInfo(
+          console.log("[WhatsApp]",
             `API OK. Instâncias: ${apiData.instances?.map((i: { instanceName: string }) => i.instanceName).join(", ")}`
           );
         } else {
           setApiReachable(false);
-          setDebugInfo(
+          console.log("[WhatsApp]",
             `API falhou: configured=${apiData.configured}, reachable=${apiData.reachable}, error=${apiData.error || "none"}`
           );
           setLoading(false);
@@ -121,7 +120,7 @@ export default function SettingsPage() {
             const statusData = await statusRes.json();
             if (!cancelled) {
               setInstanceConnected(statusData.connected || false);
-              setDebugInfo(
+              console.log("[WhatsApp]",
                 `Instância "${savedInstance}": ${statusData.connected ? "conectada" : "desconectada"} (state: ${statusData.state})`
               );
               if (statusData.connected) setQrCode(null);
@@ -133,7 +132,7 @@ export default function SettingsPage() {
       } catch (err) {
         if (!cancelled) {
           setApiReachable(false);
-          setDebugInfo(`Erro geral: ${err}`);
+          console.log("[WhatsApp]",`Erro geral: ${err}`);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -173,7 +172,7 @@ export default function SettingsPage() {
   const reload = async () => {
     setLoading(true);
     setApiReachable(null);
-    setDebugInfo("Recarregando...");
+    console.log("[WhatsApp]","Recarregando...");
 
     try {
       const apiRes = await fetch("/api/whatsapp/instance");
@@ -181,7 +180,7 @@ export default function SettingsPage() {
 
       if (apiData.configured && apiData.reachable) {
         setApiReachable(true);
-        setDebugInfo("API reconectada com sucesso!");
+        console.log("[WhatsApp]","API reconectada com sucesso!");
 
         if (activeInstanceName) {
           try {
@@ -196,13 +195,13 @@ export default function SettingsPage() {
         }
       } else {
         setApiReachable(false);
-        setDebugInfo(
+        console.log("[WhatsApp]",
           `API: configured=${apiData.configured}, reachable=${apiData.reachable}, error=${apiData.error}`
         );
       }
     } catch (err) {
       setApiReachable(false);
-      setDebugInfo(`Erro ao recarregar: ${err}`);
+      console.log("[WhatsApp]",`Erro ao recarregar: ${err}`);
     } finally {
       setLoading(false);
     }
@@ -456,13 +455,6 @@ export default function SettingsPage() {
               </span>
             )}
           </div>
-
-          {/* Debug info - visible while debugging */}
-          {debugInfo && (
-            <div className="p-3 bg-slate-900 border border-slate-700 rounded-lg">
-              <p className="text-[11px] font-mono text-slate-400">{debugInfo}</p>
-            </div>
-          )}
 
           {/* Loading */}
           {isLoading && (
