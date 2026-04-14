@@ -45,6 +45,7 @@ export default function SettingsPage() {
   const [activeInstanceName, setActiveInstanceName] = useState("");
   const [instanceExists, setInstanceExists] = useState(false);
   const [newInstanceName, setNewInstanceName] = useState("");
+  const [availableInstances, setAvailableInstances] = useState<string[]>([]);
   const [creatingInstance, setCreatingInstance] = useState(false);
   const [instanceResult, setInstanceResult] = useState<{
     success: boolean;
@@ -97,6 +98,11 @@ export default function SettingsPage() {
 
         if (apiData.configured && apiData.reachable) {
           setApiReachable(true);
+          if (apiData.instances) {
+            setAvailableInstances(
+              apiData.instances.map((i: { instanceName: string }) => i.instanceName)
+            );
+          }
           console.log("[WhatsApp]",
             `API OK. Instâncias: ${apiData.instances?.map((i: { instanceName: string }) => i.instanceName).join(", ")}`
           );
@@ -219,13 +225,60 @@ export default function SettingsPage() {
     }
   };
 
-  const createInstance = async () => {
+  const selectExistingInstance = async (name: string) => {
+    setCreatingInstance(true);
+    setInstanceResult(null);
+
+    try {
+      const statusRes = await fetch(
+        `/api/whatsapp/status?instance=${encodeURIComponent(name)}`
+      );
+      const statusData = await statusRes.json();
+
+      setActiveInstanceName(name);
+      setInstanceExists(true);
+      setInstanceConnected(statusData.connected || false);
+      setNewInstanceName("");
+      saveInstanceToSettings(name);
+      setInstanceResult({
+        success: true,
+        message: statusData.connected
+          ? `Conectado à instância "${name}"!`
+          : `Instância "${name}" selecionada. Clique em "Gerar QR Code" para conectar.`,
+      });
+    } catch {
+      // Even if status check fails, select the instance
+      setActiveInstanceName(name);
+      setInstanceExists(true);
+      setInstanceConnected(false);
+      setNewInstanceName("");
+      saveInstanceToSettings(name);
+      setInstanceResult({
+        success: true,
+        message: `Instância "${name}" selecionada. Clique em "Gerar QR Code" para conectar.`,
+      });
+    } finally {
+      setCreatingInstance(false);
+    }
+  };
+
+  const createOrSelectInstance = async () => {
     const name = newInstanceName.trim();
     if (!name) {
       setInstanceResult({ success: false, message: "Digite um nome para a instância" });
       return;
     }
 
+    // If it already exists on the server, just select it
+    if (availableInstances.some((i) => i.toLowerCase() === name.toLowerCase())) {
+      const exactName = availableInstances.find(
+        (i) => i.toLowerCase() === name.toLowerCase()
+      )!;
+      await selectExistingInstance(exactName);
+      return;
+    }
+
+    // Otherwise create a new one
     setCreatingInstance(true);
     setInstanceResult(null);
 
@@ -606,39 +659,68 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              {/* Create New Instance */}
+              {/* Select or Create Instance */}
               {!instanceExists && (
-                <div className="p-4 bg-slate-700/50 rounded-xl space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
-                      Criar Instância
+                <div className="space-y-4">
+                  {/* Existing instances list */}
+                  {availableInstances.length > 0 && (
+                    <div className="p-4 bg-slate-700/50 rounded-xl space-y-3">
+                      <label className="block text-sm font-medium text-slate-300">
+                        Instâncias disponíveis
+                      </label>
+                      <div className="space-y-2">
+                        {availableInstances.map((name) => (
+                          <button
+                            key={name}
+                            onClick={() => selectExistingInstance(name)}
+                            disabled={creatingInstance}
+                            className="flex items-center justify-between w-full px-4 py-3 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 border border-slate-600 hover:border-green-500/50 rounded-xl text-sm transition-colors group"
+                          >
+                            <div className="flex items-center gap-3">
+                              <Server size={16} className="text-slate-400 group-hover:text-green-400" />
+                              <span className="text-slate-200 font-medium">{name}</span>
+                            </div>
+                            <span className="text-xs text-slate-500 group-hover:text-green-400">
+                              Selecionar
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Create new instance */}
+                  <div className="p-4 bg-slate-700/50 rounded-xl space-y-3">
+                    <label className="block text-sm font-medium text-slate-300">
+                      {availableInstances.length > 0 ? "Ou criar nova instância" : "Criar Instância"}
                     </label>
                     <input
                       type="text"
-                      placeholder="Digite o nome da instância..."
+                      placeholder="Digite o nome da nova instância..."
                       value={newInstanceName}
                       onChange={(e) => setNewInstanceName(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter" && newInstanceName.trim()) createInstance();
+                        if (e.key === "Enter" && newInstanceName.trim()) createOrSelectInstance();
                       }}
                       className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-green-500"
                     />
-                    <p className="text-xs text-slate-500 mt-2">
-                      Use letras, números e hífens. Ex: minha-loja, pdv-01
-                    </p>
+                    <button
+                      onClick={createOrSelectInstance}
+                      disabled={creatingInstance || !newInstanceName.trim()}
+                      className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white text-sm font-medium rounded-xl transition-colors"
+                    >
+                      {creatingInstance ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <Plus size={16} />
+                      )}
+                      {availableInstances.some(
+                        (i) => i.toLowerCase() === newInstanceName.trim().toLowerCase()
+                      )
+                        ? "Conectar à Instância"
+                        : "Criar Instância"}
+                    </button>
                   </div>
-                  <button
-                    onClick={createInstance}
-                    disabled={creatingInstance || !newInstanceName.trim()}
-                    className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white text-sm font-medium rounded-xl transition-colors"
-                  >
-                    {creatingInstance ? (
-                      <Loader2 size={16} className="animate-spin" />
-                    ) : (
-                      <Plus size={16} />
-                    )}
-                    Criar Instância
-                  </button>
                 </div>
               )}
             </div>
