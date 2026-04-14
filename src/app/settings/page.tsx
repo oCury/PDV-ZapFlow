@@ -659,68 +659,41 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              {/* Select or Create Instance */}
+              {/* Create or Connect Instance */}
               {!instanceExists && (
-                <div className="space-y-4">
-                  {/* Existing instances list */}
-                  {availableInstances.length > 0 && (
-                    <div className="p-4 bg-slate-700/50 rounded-xl space-y-3">
-                      <label className="block text-sm font-medium text-slate-300">
-                        Instâncias disponíveis
-                      </label>
-                      <div className="space-y-2">
-                        {availableInstances.map((name) => (
-                          <button
-                            key={name}
-                            onClick={() => selectExistingInstance(name)}
-                            disabled={creatingInstance}
-                            className="flex items-center justify-between w-full px-4 py-3 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 border border-slate-600 hover:border-green-500/50 rounded-xl text-sm transition-colors group"
-                          >
-                            <div className="flex items-center gap-3">
-                              <Server size={16} className="text-slate-400 group-hover:text-green-400" />
-                              <span className="text-slate-200 font-medium">{name}</span>
-                            </div>
-                            <span className="text-xs text-slate-500 group-hover:text-green-400">
-                              Selecionar
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Create new instance */}
-                  <div className="p-4 bg-slate-700/50 rounded-xl space-y-3">
-                    <label className="block text-sm font-medium text-slate-300">
-                      {availableInstances.length > 0 ? "Ou criar nova instância" : "Criar Instância"}
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Digite o nome da nova instância..."
-                      value={newInstanceName}
-                      onChange={(e) => setNewInstanceName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && newInstanceName.trim()) createOrSelectInstance();
-                      }}
-                      className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-green-500"
-                    />
-                    <button
-                      onClick={createOrSelectInstance}
-                      disabled={creatingInstance || !newInstanceName.trim()}
-                      className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white text-sm font-medium rounded-xl transition-colors"
-                    >
-                      {creatingInstance ? (
-                        <Loader2 size={16} className="animate-spin" />
-                      ) : (
-                        <Plus size={16} />
-                      )}
-                      {availableInstances.some(
-                        (i) => i.toLowerCase() === newInstanceName.trim().toLowerCase()
-                      )
-                        ? "Conectar à Instância"
-                        : "Criar Instância"}
-                    </button>
-                  </div>
+                <div className="p-4 bg-slate-700/50 rounded-xl space-y-3">
+                  <label className="block text-sm font-medium text-slate-300">
+                    Nome da Instância
+                  </label>
+                  <p className="text-xs text-slate-400">
+                    Digite o nome da instância. Se já existir, será conectada automaticamente.
+                  </p>
+                  <input
+                    type="text"
+                    placeholder="Digite o nome da instância..."
+                    value={newInstanceName}
+                    onChange={(e) => setNewInstanceName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && newInstanceName.trim()) createOrSelectInstance();
+                    }}
+                    className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-xl text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-green-500"
+                  />
+                  <button
+                    onClick={createOrSelectInstance}
+                    disabled={creatingInstance || !newInstanceName.trim()}
+                    className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-green-600 hover:bg-green-700 disabled:bg-slate-600 disabled:cursor-not-allowed text-white text-sm font-medium rounded-xl transition-colors"
+                  >
+                    {creatingInstance ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Plus size={16} />
+                    )}
+                    {availableInstances.some(
+                      (i) => i.toLowerCase() === newInstanceName.trim().toLowerCase()
+                    )
+                      ? "Conectar à Instância"
+                      : "Criar Instância"}
+                  </button>
                 </div>
               )}
             </div>
