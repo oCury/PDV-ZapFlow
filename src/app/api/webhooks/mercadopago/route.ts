@@ -62,22 +62,30 @@ export async function POST(req: Request) {
       return NextResponse.json({ received: true, already_processed: true });
     }
 
+    // ── Decrement stock: variant-level or product-level ──────────────────
+    const stockOps = sale.items.map((item) => {
+      if (item.variant_id) {
+        return prisma.productVariant.update({
+          where: { id: item.variant_id },
+          data: { stock_quantity: { decrement: item.quantity } },
+        });
+      }
+      return prisma.product.update({
+        where: { id: item.product_id },
+        data: { stock_quantity: { decrement: item.quantity } },
+      });
+    });
+
     await prisma.$transaction([
       prisma.sale.update({
         where: { id: saleId },
         data: { status: "APPROVED" },
       }),
-      ...sale.items.map((item) =>
-        prisma.product.update({
-          where: { id: item.product_id },
-          data: { stock_quantity: { decrement: item.quantity } },
-        })
-      ),
+      ...stockOps,
     ]);
 
     return NextResponse.json({ received: true, sale_approved: true });
   } catch (error) {
-    console.error("[webhook/mercadopago]", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

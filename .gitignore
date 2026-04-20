@@ -41,3 +41,6 @@ next-env.d.ts
 
 .vercel
 .env*.local
+
+# strategy PDFs (confidential)
+docs/estrategia/*.pdf

@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Package, Loader2, PlusCircle } from "lucide-react";
-import type { Product } from "@/hooks/useProducts";
+import { Package, Loader2, PlusCircle, Grid3X3 } from "lucide-react";
+import type { Product, ProductVariant } from "@/hooks/useProducts";
+import { VariantSelectorModal } from "@/components/variant-selector-modal";
 
 interface PosProductGridProps {
   products: Product[];
   loading: boolean;
   error: string | null;
   onProductClick: (product: Product) => void;
+  onVariantClick?: (product: Product, variant: ProductVariant) => void;
   onAddNewProduct?: () => void;
 }
 
@@ -17,14 +19,31 @@ export function PosProductGrid({
   loading,
   error,
   onProductClick,
+  onVariantClick,
   onAddNewProduct,
 }: PosProductGridProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [variantProduct, setVariantProduct] = useState<Product | null>(null);
 
   const categories = [...new Set(products.map((p) => p.category))].sort();
   const filtered = selectedCategory
     ? products.filter((p) => p.category === selectedCategory)
     : products;
+
+  const handleProductClick = (product: Product) => {
+    if (product.has_variants && product.variants?.length) {
+      setVariantProduct(product);
+    } else {
+      onProductClick(product);
+    }
+  };
+
+  const handleVariantSelect = (product: Product, variant: ProductVariant) => {
+    if (onVariantClick) {
+      onVariantClick(product, variant);
+    }
+    setVariantProduct(null);
+  };
 
   if (loading) {
     return (
@@ -71,33 +90,44 @@ export function PosProductGrid({
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
-        {[null, ...categories].map((cat) => (
-          <button
-            key={cat ?? "__all__"}
-            onClick={() => setSelectedCategory(cat)}
-            className={`touch-target min-h-[40px] sm:min-h-[48px] shrink-0 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap ${
-              selectedCategory === cat
-                ? "bg-brand-green text-primary-dark"
-                : "bg-slate-700 text-slate-300 hover:bg-slate-600"
-            }`}
-          >
-            {cat ?? "Todos"}
-          </button>
-        ))}
+    <>
+      <div className="flex flex-col gap-4">
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
+          {[null, ...categories].map((cat) => (
+            <button
+              key={cat ?? "__all__"}
+              onClick={() => setSelectedCategory(cat)}
+              className={`touch-target min-h-[40px] sm:min-h-[48px] shrink-0 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap ${
+                selectedCategory === cat
+                  ? "bg-brand-green text-primary-dark"
+                  : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+              }`}
+            >
+              {cat ?? "Todos"}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3 content-start">
+          {filtered.map((product) => (
+            <PosProductCard
+              key={product.id}
+              product={product}
+              onClick={() => handleProductClick(product)}
+            />
+          ))}
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3 content-start">
-        {filtered.map((product) => (
-          <PosProductCard
-            key={product.id}
-            product={product}
-            onClick={() => onProductClick(product)}
-          />
-        ))}
-      </div>
-    </div>
+      {variantProduct && (
+        <VariantSelectorModal
+          isOpen={!!variantProduct}
+          product={variantProduct}
+          onClose={() => setVariantProduct(null)}
+          onSelect={handleVariantSelect}
+        />
+      )}
+    </>
   );
 }
 
@@ -108,16 +138,22 @@ function PosProductCard({
   product: Product;
   onClick: () => void;
 }) {
-  const outOfStock = product.stock_quantity <= 0;
+  // For variant products, calculate total stock from variants
+  const totalStock = product.has_variants && product.variants?.length
+    ? product.variants.reduce((sum, v) => sum + v.stock_quantity, 0)
+    : product.stock_quantity;
+
+  const outOfStock = totalStock <= 0;
   const minStock = product.min_stock || 5;
-  const lowStock = product.stock_quantity > 0 && product.stock_quantity <= minStock;
-  const goodStock = product.stock_quantity > minStock;
+  const lowStock = totalStock > 0 && totalStock <= minStock;
 
   const stockColor = outOfStock
     ? "text-red-500"
     : lowStock
       ? "text-amber-400"
       : "text-emerald-400";
+
+  const variantCount = product.variants?.length ?? 0;
 
   return (
     <button
@@ -144,6 +180,12 @@ function PosProductCard({
             <span className="text-xs sm:text-sm font-bold text-red-400">SEM ESTOQUE</span>
           </div>
         )}
+        {product.has_variants && variantCount > 0 && (
+          <div className="absolute top-1.5 right-1.5 bg-brand-green/90 text-primary-dark text-[10px] sm:text-xs font-bold px-1.5 py-0.5 rounded-lg flex items-center gap-0.5">
+            <Grid3X3 size={10} />
+            {variantCount}
+          </div>
+        )}
       </div>
 
       <div className="p-2 sm:p-4 space-y-0.5 sm:space-y-1">
@@ -154,7 +196,7 @@ function PosProductCard({
           R$ {product.sell_price.toFixed(2)}
         </p>
         <p className={`text-[10px] sm:text-xs font-bold ${stockColor}`}>
-          {product.stock_quantity} un.
+          {totalStock} un.
         </p>
       </div>
 

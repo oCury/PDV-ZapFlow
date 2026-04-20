@@ -7,12 +7,19 @@ export const cartItemSchema = z.object({
   name: z.string().min(1),
   quantity: z.number().int().positive(),
   unit_price: z.number().nonnegative(),
+  productId: z.string().optional(),
+  variantId: z.string().optional(),
+  size: z.string().optional(),
+  color: z.string().optional(),
 });
 
 export const saleItemPayloadSchema = z.object({
   productId: z.string().min(1),
+  variantId: z.string().optional(),
   quantity: z.number().int().positive(),
   unitPrice: z.number().nonnegative(),
+  size: z.string().optional(),
+  color: z.string().optional(),
 });
 
 // ─── Payments ────────────────────────────────────────────────────────────────
@@ -32,9 +39,14 @@ export const createSaleSchema = z
     paymentMethod: z.enum(["CASH", "CARD", "PIX", "LOYALTY"]).optional(),
     customerId: z.string().optional(),
     customerPhone: z.string().optional(),
-    tableId: z.string().optional(),         // M5: table/command
-    loyaltyDiscount: z.number().nonnegative().optional(), // M3: points discount
-    notes: z.string().max(500).optional(),  // M5: order notes
+    tableId: z.string().optional(),
+    loyaltyDiscount: z.number().nonnegative().optional(),
+    notes: z.string().max(500).optional(),
+    shippingCost: z.number().nonnegative().optional(),
+    shippingMethod: z.string().optional(),
+    shippingAddress: z.string().optional(),
+    shippingCep: z.string().optional(),
+    channel: z.enum(["PDV", "ONLINE", "WHATSAPP"]).optional(),
   })
   .refine(
     (data) => data.payments?.length || data.paymentMethod,

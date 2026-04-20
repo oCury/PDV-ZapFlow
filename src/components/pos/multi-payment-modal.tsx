@@ -47,9 +47,12 @@ const PAYMENT_METHODS: { key: PaymentMethod; icon: typeof Banknote; label: strin
 
 function buildItemsPayload(cartItems: CartItem[]) {
   return cartItems.map((item) => ({
-    productId: item.id,
+    productId: item.productId ?? item.id,
+    variantId: item.variantId,
     quantity: item.quantity,
     unitPrice: item.unit_price,
+    size: item.size,
+    color: item.color,
   }));
 }
 

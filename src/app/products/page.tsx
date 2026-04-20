@@ -39,6 +39,7 @@ export default function ProductsPage() {
       stock_quantity: product.stock_quantity.toString(),
       min_stock: product.min_stock.toString(),
       category: product.category,
+      category_id: product.category_id || "",
       image_url: product.image_url || "",
     });
     setModalOpen(true);

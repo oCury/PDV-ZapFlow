@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDV-ZapFlow — Relatório Estratégico</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0f172a;
+    --bg-card: #1e293b;
+    --bg-card-alt: #334155;
+    --accent: #22c55e;
+    --accent-light: #4ade80;
+    --text: #f8fafc;
+    --text-muted: #94a3b8;
+    --red: #ef4444;
+    --yellow: #eab308;
+    --blue: #3b82f6;
+    --purple: #a855f7;
+  }
+
+  @page {
+    size: A4;
+    margin: 20mm 15mm;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 11px;
+  }
+
+  .page { page-break-after: always; padding: 40px 0; }
+  .page:last-child { page-break-after: avoid; }
+
+  h1 { font-size: 28px; font-weight: 800; margin-bottom: 16px; color: var(--text); }
+  h2 { font-size: 22px; font-weight: 700; margin-bottom: 12px; color: var(--accent); border-bottom: 2px solid var(--accent); padding-bottom: 8px; }
+  h3 { font-size: 15px; font-weight: 600; margin-bottom: 8px; color: var(--accent-light); }
+  h4 { font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+  p { margin-bottom: 10px; color: var(--text-muted); font-size: 11px; }
+  strong { color: var(--text); }
+
+  /* Cover */
+  .cover {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 90vh;
+    text-align: center;
+  }
+  .cover-logo {
+    font-size: 48px;
+    font-weight: 900;
+    letter-spacing: -2px;
+    margin-bottom: 8px;
+  }
+  .cover-logo span { color: var(--accent); }
+  .cover-subtitle {
+    font-size: 18px;
+    color: var(--text-muted);
+    margin-bottom: 40px;
+    max-width: 500px;
+  }
+  .cover-date { font-size: 14px; color: var(--text-muted); margin-bottom: 12px; }
+  .cover-badge {
+    display: inline-block;
+    background: var(--red);
+    color: white;
+    padding: 6px 20px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+
+  /* Stat cards */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 16px 0;
+  }
+  .stat-card {
+    background: var(--bg-card);
+    border-radius: 8px;
+    padding: 16px;
+    text-align: center;
+    border: 1px solid rgba(34,197,94,0.2);
+  }
+  .stat-card .number {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--accent);
+    display: block;
+  }
+  .stat-card .label {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 10px;
+  }
+  th {
+    background: var(--bg-card);
+    color: var(--accent);
+    padding: 8px 6px;
+    text-align: left;
+    font-weight: 700;
+    border-bottom: 2px solid var(--accent);
+  }
+  td {
+    padding: 7px 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    color: var(--text-muted);
+  }
+  tr:nth-child(even) td { background: rgba(30,41,59,0.5); }
+  tr:hover td { background: rgba(34,197,94,0.05); }
+
+  /* Badges */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .badge-sim { background: rgba(34,197,94,0.2); color: #22c55e; }
+  .badge-nao { background: rgba(239,68,68,0.2); color: #ef4444; }
+  .badge-parcial { background: rgba(234,179,8,0.2); color: #eab308; }
+
+  /* Highlight row */
+  tr.highlight td {
+    background: rgba(34,197,94,0.1) !important;
+    color: var(--text);
+    font-weight: 600;
+    border-top: 2px solid var(--accent);
+    border-bottom: 2px solid var(--accent);
+  }
+
+  /* Bar charts */
+  .bar-chart { margin: 16px 0; }
+  .bar-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .bar-label {
+    width: 120px;
+    font-size: 10px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+  .bar-track {
+    flex: 1;
+    height: 24px;
+    background: var(--bg-card);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    padding-left: 8px;
+    font-size: 9px;
+    font-weight: 700;
+    color: white;
+  }
+
+  /* Persona cards */
+  .personas-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin: 12px 0;
+  }
+  .persona-card {
+    background: var(--bg-card);
+    border-radius: 8px;
+    padding: 14px;
+    border-left: 4px solid var(--accent);
+  }
+  .persona-card:nth-child(2) { border-left-color: var(--blue); }
+  .persona-card:nth-child(3) { border-left-color: var(--purple); }
+  .persona-card:nth-child(4) { border-left-color: var(--yellow); }
+  .persona-card:nth-child(5) { border-left-color: var(--red); }
+  .persona-card h4 { margin-bottom: 4px; }
+  .persona-card p { font-size: 10px; margin-bottom: 4px; }
+
+  /* Pricing cards */
+  .pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin: 16px 0;
+  }
+  .pricing-card {
+    background: var(--bg-card);
+    border-radius: 8px;
+    padding: 16px 12px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.1);
+    position: relative;
+  }
+  .pricing-card.featured {
+    border-color: var(--accent);
+    box-shadow: 0 0 20px rgba(34,197,94,0.15);
+  }
+  .pricing-card .plan-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .pricing-card .plan-price {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+  .pricing-card .plan-price small { font-size: 11px; color: var(--text-muted); }
+  .pricing-card .plan-desc {
+    font-size: 9px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  .pricing-card ul {
+    list-style: none;
+    text-align: left;
+    font-size: 9px;
+    color: var(--text-muted);
+  }
+  .pricing-card ul li { padding: 2px 0; }
+  .pricing-card ul li::before { content: "✓ "; color: var(--accent); font-weight: 700; }
+
+  /* SWOT */
+  .swot-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 12px 0;
+  }
+  .swot-cell {
+    background: var(--bg-card);
+    border-radius: 8px;
+    padding: 12px;
+  }
+  .swot-cell h4 { font-size: 11px; margin-bottom: 6px; }
+  .swot-cell ul { list-style: none; font-size: 10px; color: var(--text-muted); }
+  .swot-cell ul li { padding: 2px 0; }
+  .swot-cell ul li::before { content: "• "; color: var(--accent); }
+  .swot-cell.threats ul li::before { color: var(--red); }
+  .swot-cell.weaknesses ul li::before { color: var(--yellow); }
+  .swot-cell.opportunities ul li::before { color: var(--blue); }
+
+  /* Roadmap */
+  .roadmap-item {
+    background: var(--bg-card);
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 10px;
+    border-left: 4px solid var(--accent);
+  }
+  .roadmap-item.next { border-left-color: var(--blue); }
+  .roadmap-item.later { border-left-color: var(--purple); }
+  .roadmap-item ul { list-style: none; font-size: 10px; color: var(--text-muted); columns: 2; }
+  .roadmap-item ul li { padding: 2px 0; }
+  .roadmap-item ul li::before { content: "→ "; color: var(--accent); }
+
+  /* Footer */
+  .page-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 9px;
+    color: var(--text-muted);
+    padding: 8px;
+    border-top: 1px solid rgba(255,255,255,0.05);
+  }
+
+  @media print {
+    .page-footer {
+      position: running(footer);
+    }
+    @page {
+      @bottom-center {
+        content: element(footer);
+      }
+    }
+  }
+
+  /* Projection chart */
+  .projection-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    height: 120px;
+    margin: 16px 0;
+    padding: 0 10px;
+  }
+  .proj-bar {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    height: 100%;
+  }
+  .proj-bar .bar {
+    width: 100%;
+    background: linear-gradient(to top, var(--accent), var(--accent-light));
+    border-radius: 4px 4px 0 0;
+    min-height: 4px;
+  }
+  .proj-bar .proj-label {
+    font-size: 8px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+  .proj-bar .proj-value {
+    font-size: 8px;
+    color: var(--accent);
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  /* Key insight box */
+  .insight-box {
+    background: rgba(34,197,94,0.08);
+    border: 1px solid rgba(34,197,94,0.3);
+    border-radius: 8px;
+    padding: 14px;
+    margin: 12px 0;
+  }
+  .insight-box p { color: var(--text); font-size: 11px; }
+
+  /* Risk table */
+  .risk-high { color: var(--red); font-weight: 700; }
+  .risk-med { color: var(--yellow); font-weight: 700; }
+  .risk-low { color: var(--accent); font-weight: 700; }
+
+  /* Columns layout */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  /* List styles */
+  .feature-list { list-style: none; margin: 8px 0; }
+  .feature-list li { padding: 3px 0; font-size: 10px; color: var(--text-muted); }
+  .feature-list li::before { content: "✦ "; color: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- COVER PAGE -->
+<div class="page cover">
+  <div class="cover-logo">PDV-<span>ZapFlow</span></div>
+  <div class="cover-subtitle">Relatório Estratégico — Sistema inteligente de vendas e gestão para qualquer negócio</div>
+  <div class="cover-date">20 de Abril de 2026</div>
+  <div class="cover-badge">CONFIDENCIAL — Uso interno</div>
+</div>
+
+<!-- 1. RESUMO EXECUTIVO -->
+<div class="page">
+  <h2>1. Resumo Executivo</h2>
+  <p>O PDV-ZapFlow é um sistema de ponto de venda e gestão de clientes que atende <strong>qualquer tipo de negócio</strong> — lojas de roupa, restaurantes, bares, cafeterias, salões, food trucks e muito mais. Combina PDV, controle de estoque, WhatsApp integrado, pagamentos (Pix, cartão, dinheiro), nota fiscal, cashback e follow-up automático em uma única plataforma simples.</p>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <span class="number">22-23M</span>
+      <span class="label">CNPJs ativos no Brasil</span>
+    </div>
+    <div class="stat-card">
+      <span class="number">6-8M</span>
+      <span class="label">Negócios sem sistema PDV</span>
+    </div>
+    <div class="stat-card">
+      <span class="number">R$ 3-5B</span>
+      <span class="label">Mercado PDV SaaS/ano</span>
+    </div>
+    <div class="stat-card">
+      <span class="number">170M+</span>
+      <span class="label">Usuários WhatsApp BR</span>
+    </div>
+    <div class="stat-card">
+      <span class="number">6x</span>
+      <span class="label">Conversão WhatsApp vs e-commerce</span>
+    </div>
+    <div class="stat-card">
+      <span class="number">15-22%</span>
+      <span class="label">Crescimento anual do mercado</span>
+    </div>
+  </div>
+
+  <h3>Nenhum concorrente combina TUDO isso:</h3>
+  <ol class="feature-list" style="list-style: decimal; padding-left: 20px;">
+    <li>PDV com grade de variantes (tamanho/cor para moda)</li>
+    <li>Mesas e comandas digitais (para restaurantes/bares)</li>
+    <li>WhatsApp como canal de vendas nativo</li>
+    <li>NFC-e/fiscal embutido</li>
+    <li>Frete + checkout online</li>
+    <li>Cashback + follow-up automatizado</li>
+    <li>UX simples ("como jogar um jogo")</li>
+  </ol>
+</div>
+
+<!-- 2. TAMANHO DO MERCADO -->
+<div class="page">
+  <h2>2. Tamanho do Mercado</h2>
+
+  <div class="bar-chart">
+    <div class="bar-row">
+      <div class="bar-label">TAM</div>
+      <div class="bar-track"><div class="bar-fill" style="width:100%; background: linear-gradient(90deg, #22c55e, #4ade80);">R$ 8-12 bilhões/ano — Gestão/PDV varejo e serviços BR</div></div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">SAM</div>
+      <div class="bar-track"><div class="bar-fill" style="width:42%; background: linear-gradient(90deg, #3b82f6, #60a5fa);">R$ 3-5 bilhões/ano — PDV SaaS micro/pequenas</div></div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">SOM</div>
+      <div class="bar-track"><div class="bar-fill" style="width:52%; background: linear-gradient(90deg, #a855f7, #c084fc);">R$ 4,7-6,2 bilhões/ano — Negócios underserved</div></div>
+    </div>
+    <div class="bar-row">
+      <div class="bar-label">Meta Ano 1</div>
+      <div class="bar-track"><div class="bar-fill" style="width:8%; background: linear-gradient(90deg, #eab308, #facc15);">R$ 2,4M ARR (5.000 usuários)</div></div>
+    </div>
+  </div>
+
+  <h3>Segmentos por número de negócios</h3>
+  <table>
+    <thead><tr><th>Segmento</th><th>Negócios Estimados</th></tr></thead>
+    <tbody>
+      <tr><td>Restaurantes / bares / lanchonetes</td><td><strong>1,3-1,5 milhão</strong></td></tr>
+      <tr><td>Outros varejo (papelarias, pet shops, etc.)</td><td><strong>1,5-2 milhões</strong></td></tr>
+      <tr><td>Serviços (salões, barbearias, estética)</td><td><strong>1,2-1,5 milhão</strong></td></tr>
+      <tr><td>Varejo de moda / vestuário</td><td><strong>600-700 mil</strong></td></tr>
+      <tr><td>Minimercados / conveniências</td><td><strong>400-500 mil</strong></td></tr>
+      <tr><td>Padarias / cafeterias</td><td><strong>350-400 mil</strong></td></tr>
+      <tr><td>Food trucks / ambulantes</td><td><strong>200-300 mil</strong></td></tr>
+      <tr><td>Farmácias</td><td><strong>~90 mil</strong></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 3. ANÁLISE COMPETITIVA -->
+<div class="page">
+  <h2>3. Análise Competitiva</h2>
+
+  <table style="font-size: 9px;">
+    <thead>
+      <tr>
+        <th>Concorrente</th><th>Tipo</th><th>PDV</th><th>Mesas</th><th>Grade Moda</th><th>WhatsApp</th><th>NFC-e</th><th>Cashback</th><th>Follow-up</th><th>Preço</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Bling</td><td>ERP e-commerce</td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td>R$ 49</td></tr>
+      <tr><td>Nex</td><td>PDV varejo</td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td>R$ 0</td></tr>
+      <tr><td>Saipos</td><td>Food service</td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td>R$ 99</td></tr>
+      <tr><td>Consumer</td><td>Food service</td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td>R$ 79</td></tr>
+      <tr><td>GrandChef</td><td>Food service</td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td>R$ 89</td></tr>
+      <tr><td>Kyte</td><td>App micro</td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-parcial">PARCIAL</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td>R$ 0</td></tr>
+      <tr><td>Hiper</td><td>PDV varejo</td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td>Consulta</td></tr>
+      <tr><td>Omie</td><td>ERP completo</td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td>R$ 49</td></tr>
+      <tr><td>SumUp</td><td>Maquininha</td><td><span class="badge badge-parcial">BÁSICO</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td>R$ 0</td></tr>
+      <tr><td>Stone Hub</td><td>Maquininha+soft</td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-parcial">PARCIAL</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td>R$ 0</td></tr>
+      <tr><td>Goomer</td><td>Cardápio digital</td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td>R$ 99</td></tr>
+      <tr><td>MarketUP</td><td>PDV/ERP grátis</td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-nao">NÃO</span></td><td><span class="badge badge-nao">NÃO</span></td><td>R$ 0</td></tr>
+      <tr class="highlight"><td><strong>PDV-ZapFlow</strong></td><td><strong>All-in-one</strong></td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-sim">SIM</span></td><td><span class="badge badge-sim">SIM</span></td><td><strong>R$ 0</strong></td></tr>
+    </tbody>
+  </table>
+
+  <div class="insight-box">
+    <p><strong>Insight-chave:</strong> Os concorrentes são SILOED por segmento. PDV de restaurante não faz varejo. PDV de varejo não faz mesas. Ninguém faz WhatsApp + cashback + follow-up. O ZapFlow é o ÚNICO que cobre todos.</p>
+  </div>
+</div>
+
+<!-- 3b. SWOT -->
+<div class="page">
+  <h2>3. Análise SWOT</h2>
+
+  <div class="swot-grid">
+    <div class="swot-cell">
+      <h4 style="color: var(--accent);">FORÇAS</h4>
+      <ul>
+        <li>Multi-segmento (moda + food + serviços)</li>
+        <li>WhatsApp nativo como canal de vendas</li>
+        <li>NFC-e embutido</li>
+        <li>Cashback + follow-up automatizado</li>
+        <li>UX simples e intuitiva</li>
+        <li>PWA (funciona em qualquer dispositivo)</li>
+        <li>Custo baixo de infraestrutura</li>
+      </ul>
+    </div>
+    <div class="swot-cell weaknesses">
+      <h4 style="color: var(--yellow);">FRAQUEZAS</h4>
+      <ul>
+        <li>Produto novo, marca desconhecida</li>
+        <li>Equipe pequena</li>
+        <li>Sem integração marketplace ainda</li>
+        <li>Sem histórico de clientes</li>
+      </ul>
+    </div>
+    <div class="swot-cell opportunities">
+      <h4 style="color: var(--blue);">OPORTUNIDADES</h4>
+      <ul>
+        <li>6-8M negócios sem sistema adequado</li>
+        <li>WhatsApp commerce explodindo</li>
+        <li>Pix obrigatório e em expansão</li>
+        <li>NFC-e expandindo para mais estados</li>
+        <li>Nenhum all-in-one acessível no mercado</li>
+      </ul>
+    </div>
+    <div class="swot-cell threats">
+      <h4 style="color: var(--red);">AMEAÇAS</h4>
+      <ul>
+        <li>Stone/PagBank podem expandir software</li>
+        <li>Bling pode adicionar food service</li>
+        <li>Barreira de entrada baixa</li>
+        <li>Negócio pequeno resiste a pagar software</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- 4. PÚBLICO-ALVO -->
+<div class="page">
+  <h2>4. Público-Alvo — 5 Personas</h2>
+
+  <div class="personas-grid">
+    <div class="persona-card">
+      <h4>"Dona Maria" — Lojista de Bairro</h4>
+      <p><strong>Perfil:</strong> Mulher, 30-55 anos, loja de roupa em bairro</p>
+      <p><strong>Equipe:</strong> 1-3 funcionários | <strong>Faturamento:</strong> R$ 5-30k/mês</p>
+      <p><strong>Dor:</strong> Controla no caderno/WhatsApp, perde vendas por não saber estoque</p>
+      <p><strong>Gatilho:</strong> Perder venda por falta de controle de tamanho/cor</p>
+    </div>
+    <div class="persona-card">
+      <h4>"Seu Carlos" — Dono de Restaurante/Bar</h4>
+      <p><strong>Perfil:</strong> Homem, 35-55 anos, restaurante ou bar de bairro</p>
+      <p><strong>Equipe:</strong> 3-8 funcionários | <strong>Faturamento:</strong> R$ 15-80k/mês</p>
+      <p><strong>Dor:</strong> Usa comanda de papel, perde pedidos, não controla CMV</p>
+      <p><strong>Gatilho:</strong> Erro de comanda que gera prejuízo, querer delivery próprio</p>
+    </div>
+    <div class="persona-card">
+      <h4>"João" — Lojista em Crescimento</h4>
+      <p><strong>Perfil:</strong> 25-45 anos, 1-3 lojas de moda ou varejo</p>
+      <p><strong>Equipe:</strong> 3-10 funcionários | <strong>Faturamento:</strong> R$ 30-150k/mês</p>
+      <p><strong>Dor:</strong> Já usa sistema genérico que não atende grade</p>
+      <p><strong>Gatilho:</strong> Autuação fiscal, querer vender online</p>
+    </div>
+    <div class="persona-card">
+      <h4>"Ana" — Dona de Salão/Barbearia</h4>
+      <p><strong>Perfil:</strong> Mulher, 25-45 anos, salão ou barbearia</p>
+      <p><strong>Equipe:</strong> 2-6 profissionais | <strong>Faturamento:</strong> R$ 8-40k/mês</p>
+      <p><strong>Dor:</strong> Agenda no WhatsApp, perde clientes por falta de follow-up</p>
+      <p><strong>Gatilho:</strong> Querer programa de fidelidade, controlar comissões</p>
+    </div>
+    <div class="persona-card">
+      <h4>"Lucas" — Food Truck / Confeitaria</h4>
+      <p><strong>Perfil:</strong> 20-35 anos, MEI, negócio solo ou com 1 ajudante</p>
+      <p><strong>Equipe:</strong> 1-2 pessoas | <strong>Faturamento:</strong> R$ 3-15k/mês</p>
+      <p><strong>Dor:</strong> Vende em feiras/eventos, precisa de agilidade</p>
+      <p><strong>Gatilho:</strong> Aceitar cartão sem maquininha cara, parecer profissional</p>
+    </div>
+  </div>
+</div>
+
+<!-- 5. ESTRATÉGIA DE PREÇOS -->
+<div class="page">
+  <h2>5. Estratégia de Preços</h2>
+
+  <h3>Clusters de mercado</h3>
+  <table>
+    <thead><tr><th>Faixa</th><th>Preço Mensal</th><th>Exemplos</th><th>% Mercado</th></tr></thead>
+    <tbody>
+      <tr><td>Grátis/Freemium</td><td>R$ 0</td><td>Nex, Kyte, MarketUP, SumUp</td><td>~40%</td></tr>
+      <tr><td>Acessível</td><td>R$ 49-99</td><td>Kyte Pro, Bling, Bagy</td><td>~35%</td></tr>
+      <tr><td>Profissional</td><td>R$ 100-250</td><td>Saipos, Bling Titânio, Consumer</td><td>~20%</td></tr>
+      <tr><td>Enterprise</td><td>R$ 300+</td><td>Bling Diamante, TOTVS</td><td>~5%</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Planos PDV-ZapFlow</h3>
+  <div class="pricing-grid">
+    <div class="pricing-card">
+      <div class="plan-name">Grátis</div>
+      <div class="plan-price">R$ 0</div>
+      <div class="plan-desc">Qualquer negócio testando</div>
+      <ul>
+        <li>PDV básico</li>
+        <li>Até 50 produtos</li>
+        <li>1 usuário</li>
+        <li>Pix/dinheiro</li>
+      </ul>
+    </div>
+    <div class="pricing-card">
+      <div class="plan-name">Essencial</div>
+      <div class="plan-price">R$ 49<small>/mês</small></div>
+      <div class="plan-desc">Negócio de bairro</div>
+      <ul>
+        <li>Produtos ilimitados</li>
+        <li>3 usuários</li>
+        <li>Grade variantes</li>
+        <li>Mesas/comandas</li>
+        <li>WhatsApp catálogo</li>
+        <li>Cashback básico</li>
+      </ul>
+    </div>
+    <div class="pricing-card featured">
+      <div class="plan-name">Pro</div>
+      <div class="plan-price">R$ 89<small>/mês</small></div>
+      <div class="plan-desc">Negócio em crescimento</div>
+      <ul>
+        <li>Tudo do Essencial</li>
+        <li>NFC-e</li>
+        <li>Multi-pagamento</li>
+        <li>Frete integrado</li>
+        <li>Follow-up WhatsApp</li>
+        <li>Checkout online</li>
+      </ul>
+    </div>
+    <div class="pricing-card">
+      <div class="plan-name">Business</div>
+      <div class="plan-price">R$ 149<small>/mês</small></div>
+      <div class="plan-desc">Multi-unidade</div>
+      <ul>
+        <li>Tudo do Pro</li>
+        <li>Multi-loja</li>
+        <li>Comissão vendedor</li>
+        <li>API</li>
+        <li>Dashboard avançado</li>
+        <li>Suporte prioritário</li>
+      </ul>
+    </div>
+  </div>
+
+  <p style="text-align:center; color: var(--accent); font-weight: 600;">Desconto anual: 20% → R$ 39 | R$ 71 | R$ 119/mês</p>
+
+  <h3>Métricas de Pricing</h3>
+  <table>
+    <thead><tr><th>Métrica</th><th>Alvo Ano 1</th><th>Alvo Ano 2</th></tr></thead>
+    <tbody>
+      <tr><td>ARPU</td><td>R$ 55/mês</td><td>R$ 70/mês</td></tr>
+      <tr><td>Conversão Free→Pago</td><td>8-12%</td><td>15-20%</td></tr>
+      <tr><td>Churn mensal</td><td>&lt; 5%</td><td>&lt; 3%</td></tr>
+      <tr><td>LTV</td><td>R$ 990 (18 meses)</td><td>R$ 2.520 (36 meses)</td></tr>
+      <tr><td>CAC</td><td>&lt; R$ 150</td><td>&lt; R$ 200</td></tr>
+      <tr><td>LTV/CAC</td><td>&gt; 6x</td><td>&gt; 12x</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 6. GO-TO-MARKET -->
+<div class="page">
+  <h2>6. Go-To-Market — 3 Fases</h2>
+
+  <div class="roadmap-item">
+    <h3>Fase 1: Validação (Meses 1-3) — "Primeiros 100"</h3>
+    <ul>
+      <li>Landing page + waitlist via Instagram Ads</li>
+      <li>Beta com 20-30 negócios reais (mix: lojas, restaurantes, salões)</li>
+      <li>Conteúdo educativo (Reels: "como organizar seu negócio")</li>
+      <li>Grupo WhatsApp beta testers</li>
+      <li>Parcerias com 3-5 contadores</li>
+      <li><strong>Meta: 100 usuários, ~R$ 1.760/mês MRR</strong></li>
+    </ul>
+  </div>
+
+  <div class="roadmap-item next">
+    <h3>Fase 2: Tração (Meses 4-8) — "Primeiros 1.000"</h3>
+    <ul>
+      <li>Programa indicação ("Indique e ganhe 1 mês grátis")</li>
+      <li>SEO ("sistema PDV para restaurante", "PDV loja de roupa")</li>
+      <li>Parceria com fornecedores e distribuidores</li>
+      <li>Presença em feiras (ABF Franchising, Fispal)</li>
+      <li>Webinars por segmento</li>
+      <li>Onboarding 1:1 para pagantes</li>
+      <li><strong>Meta: 1.000 usuários, ~R$ 33.500/mês MRR</strong></li>
+    </ul>
+  </div>
+
+  <div class="roadmap-item later">
+    <h3>Fase 3: Escala (Meses 9-18) — "5.000"</h3>
+    <ul>
+      <li>Marketplace integrações (iFood, Mercado Livre, Shopee)</li>
+      <li>API para contadores e parceiros</li>
+      <li>Programa afiliados (influencers de empreendedorismo)</li>
+      <li>Expansão geográfica nacional</li>
+      <li>Cases em vídeo por segmento</li>
+      <li><strong>Meta: 5.000 usuários, ~R$ 201.000/mês MRR</strong></li>
+    </ul>
+  </div>
+
+  <h3>Canais por Prioridade</h3>
+  <table>
+    <thead><tr><th>#</th><th>Canal</th><th>Custo</th><th>Impacto</th><th>Quando</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Instagram/TikTok orgânico</td><td>Baixo</td><td>Alto</td><td>AGORA</td></tr>
+      <tr><td>2</td><td>WhatsApp indicação</td><td>Zero</td><td>Alto</td><td>AGORA</td></tr>
+      <tr><td>3</td><td>Parceria contadores</td><td>Baixo</td><td>Médio-Alto</td><td>AGORA</td></tr>
+      <tr><td>4</td><td>SEO/Conteúdo</td><td>Médio</td><td>Alto (longo prazo)</td><td>Mês 2</td></tr>
+      <tr><td>5</td><td>Instagram/Facebook Ads</td><td>Médio</td><td>Médio</td><td>Mês 3</td></tr>
+      <tr><td>6</td><td>Feiras setoriais</td><td>Alto</td><td>Alto</td><td>Mês 4</td></tr>
+      <tr><td>7</td><td>Afiliados</td><td>Variável</td><td>Alto (escala)</td><td>Mês 6</td></tr>
+      <tr><td>8</td><td>Parcerias distribuidores</td><td>Baixo</td><td>Alto</td><td>Mês 6</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 7. CUSTOS DE INFRAESTRUTURA -->
+<div class="page">
+  <h2>7. Custos de Infraestrutura</h2>
+
+  <div class="stats-grid" style="grid-template-columns: 1fr;">
+    <div class="stat-card">
+      <span class="number">R$ 365/mês</span>
+      <span class="label">Custo fixo mensal base para operar</span>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th>Serviço</th><th>Plano</th><th>Custo</th></tr></thead>
+    <tbody>
+      <tr><td>Supabase Pro</td><td>PostgreSQL</td><td>R$ 145</td></tr>
+      <tr><td>Vercel Pro</td><td>Hosting Next.js</td><td>R$ 116</td></tr>
+      <tr><td>Evolution API</td><td>VPS WhatsApp</td><td>R$ 40</td></tr>
+      <tr><td>FocusNFe</td><td>NFC-e</td><td>R$ 59,90</td></tr>
+      <tr><td>Domínio .com.br</td><td>Registro.br</td><td>R$ 3,33</td></tr>
+      <tr><td>Mercado Pago</td><td>Pagamentos</td><td>R$ 0</td></tr>
+      <tr><td>Email (Resend)</td><td>Free</td><td>R$ 0</td></tr>
+      <tr><td>Storage fotos</td><td>Vercel Blob</td><td>R$ 1</td></tr>
+    </tbody>
+  </table>
+
+  <h2>8. Unit Economics</h2>
+
+  <h3>Custo por cliente por plano</h3>
+  <table>
+    <thead><tr><th>Componente</th><th>Grátis</th><th>Essencial (R$49)</th><th>Pro (R$89)</th><th>Business (R$149)</th></tr></thead>
+    <tbody>
+      <tr><td>Banco de dados</td><td>R$ 0,30</td><td>R$ 0,50</td><td>R$ 0,80</td><td>R$ 1,50</td></tr>
+      <tr><td>Hosting/CDN</td><td>R$ 0,50</td><td>R$ 0,80</td><td>R$ 1,00</td><td>R$ 1,50</td></tr>
+      <tr><td>Fotos storage</td><td>R$ 0,10</td><td>R$ 0,20</td><td>R$ 0,30</td><td>R$ 0,50</td></tr>
+      <tr><td>NFC-e</td><td>—</td><td>—</td><td>R$ 10,00</td><td>R$ 10,00</td></tr>
+      <tr><td>WhatsApp msgs</td><td>—</td><td>R$ 4,00</td><td>R$ 8,00</td><td>R$ 12,00</td></tr>
+      <tr><td>Suporte</td><td>R$ 0</td><td>R$ 5,00</td><td>R$ 10,00</td><td>R$ 15,00</td></tr>
+      <tr style="font-weight:700;"><td>Total custo</td><td>R$ 0,90</td><td>R$ 10,50</td><td>R$ 30,10</td><td>R$ 40,50</td></tr>
+      <tr style="font-weight:700;"><td>Receita</td><td>R$ 0</td><td>R$ 49</td><td>R$ 89</td><td>R$ 149</td></tr>
+      <tr style="font-weight:700; color: #22c55e;"><td>Margem bruta</td><td style="color:#ef4444;">-R$ 0,90</td><td>R$ 38,50 (79%)</td><td>R$ 58,90 (66%)</td><td>R$ 108,50 (73%)</td></tr>
+    </tbody>
+  </table>
+
+  <div class="insight-box">
+    <p><strong>Mix ponderado (40% grátis, 35% essencial, 20% pro, 5% business):</strong><br>
+    Receita média: R$ 36,40/usuário | Custo médio: R$ 10,58/usuário | <strong>Margem bruta média: 71%</strong> (benchmark SaaS: 70-80%)</p>
+  </div>
+</div>
+
+<!-- 9. PROJEÇÕES FINANCEIRAS -->
+<div class="page">
+  <h2>9. Projeções Financeiras (18 Meses)</h2>
+
+  <h3>Cenário Base</h3>
+  <div class="projection-chart">
+    <div class="proj-bar"><div class="proj-value">R$524</div><div class="bar" style="height:1%;"></div><div class="proj-label">M1</div></div>
+    <div class="proj-bar"><div class="proj-value">R$2,6k</div><div class="bar" style="height:2%;"></div><div class="proj-label">M3</div></div>
+    <div class="proj-bar"><div class="proj-value">R$13k</div><div class="bar" style="height:7%;"></div><div class="proj-label">M6</div></div>
+    <div class="proj-bar"><div class="proj-value">R$39k</div><div class="bar" style="height:20%;"></div><div class="proj-label">M9</div></div>
+    <div class="proj-bar"><div class="proj-value">R$92k</div><div class="bar" style="height:47%;"></div><div class="proj-label">M12</div></div>
+    <div class="proj-bar"><div class="proj-value">R$144k</div><div class="bar" style="height:73%;"></div><div class="proj-label">M15</div></div>
+    <div class="proj-bar"><div class="proj-value">R$197k</div><div class="bar" style="height:100%;"></div><div class="proj-label">M18</div></div>
+  </div>
+
+  <table>
+    <thead><tr><th>Mês</th><th>Usuários</th><th>Pagantes</th><th>MRR</th><th>Custo Total</th><th>Lucro</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>20</td><td>8</td><td>R$ 524</td><td>R$ 504</td><td style="color:#22c55e;">+R$ 20</td></tr>
+      <tr><td>3</td><td>100</td><td>40</td><td>R$ 2.622</td><td>R$ 1.058</td><td style="color:#22c55e;">+R$ 1.564</td></tr>
+      <tr><td>6</td><td>500</td><td>200</td><td>R$ 13.110</td><td>R$ 3.980</td><td style="color:#22c55e;">+R$ 9.130</td></tr>
+      <tr><td>9</td><td>1.300</td><td>600</td><td>R$ 39.330</td><td>R$ 10.961</td><td style="color:#22c55e;">+R$ 28.369</td></tr>
+      <tr><td>12</td><td>2.800</td><td>1.400</td><td>R$ 91.770</td><td>R$ 24.989</td><td style="color:#22c55e;">+R$ 66.781</td></tr>
+      <tr><td>15</td><td>4.000</td><td>2.200</td><td>R$ 144.210</td><td>R$ 38.717</td><td style="color:#22c55e;">+R$ 105.493</td></tr>
+      <tr><td>18</td><td>5.000</td><td>3.000</td><td>R$ 196.650</td><td>R$ 52.845</td><td style="color:#22c55e;">+R$ 143.805</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Acumulado</h3>
+  <table>
+    <thead><tr><th>Período</th><th>Custo Acumulado</th><th>Receita Acumulada</th><th>Saldo</th></tr></thead>
+    <tbody>
+      <tr><td>Meses 1-3</td><td>R$ 2.204</td><td>R$ 4.195</td><td style="color:#22c55e;">+R$ 1.991</td></tr>
+      <tr><td>Meses 1-6</td><td>R$ 8.171</td><td>R$ 29.629</td><td style="color:#22c55e;">+R$ 21.458</td></tr>
+      <tr><td>Meses 1-12</td><td>R$ 52.302</td><td>R$ 241.107</td><td style="color:#22c55e;">+R$ 188.805</td></tr>
+      <tr><td>Meses 1-18</td><td>R$ 125.787</td><td>R$ 682.827</td><td style="color:#22c55e;font-weight:700;">+R$ 557.040</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Cenário Pessimista (metade do crescimento)</h3>
+  <table>
+    <thead><tr><th>Mês</th><th>Usuários</th><th>MRR</th><th>Custo</th><th>Resultado</th></tr></thead>
+    <tbody>
+      <tr><td>6</td><td>250</td><td>R$ 6.555</td><td>R$ 2.260</td><td style="color:#22c55e;">+R$ 4.295</td></tr>
+      <tr><td>12</td><td>1.000</td><td>R$ 29.498</td><td>R$ 8.237</td><td style="color:#22c55e;">+R$ 21.261</td></tr>
+      <tr><td>18</td><td>2.500</td><td>R$ 78.660</td><td>R$ 22.185</td><td style="color:#22c55e;">+R$ 56.475</td></tr>
+    </tbody>
+  </table>
+
+  <div class="stats-grid" style="grid-template-columns: 1fr 1fr;">
+    <div class="stat-card">
+      <span class="number">6 pagantes</span>
+      <span class="label">Break-even de infraestrutura</span>
+    </div>
+    <div class="stat-card">
+      <span class="number">100-200 pagantes</span>
+      <span class="label">Break-even real (com operacional)</span>
+    </div>
+  </div>
+</div>
+
+<!-- 10. RISCOS -->
+<div class="page">
+  <h2>10. Riscos e Mitigações</h2>
+
+  <table>
+    <thead><tr><th>Risco</th><th>Prob.</th><th>Impacto</th><th>Mitigação</th></tr></thead>
+    <tbody>
+      <tr><td>Stone/PagBank expandem software POS</td><td class="risk-high">ALTA</td><td class="risk-high">ALTO</td><td>Mover rápido, criar lock-in via dados, cashback, multi-segmento</td></tr>
+      <tr><td>Negócio pequeno não paga software</td><td class="risk-med">MÉDIA</td><td class="risk-high">ALTO</td><td>Freemium generoso, mostrar ROI (vendas perdidas vs custo)</td></tr>
+      <tr><td>Complexidade fiscal por estado</td><td class="risk-high">ALTA</td><td class="risk-med">MÉDIO</td><td>Parceiro fiscal (FocusNFe) abstrai, começar com 5 estados</td></tr>
+      <tr><td>Bling adiciona food service / mesas</td><td class="risk-med">MÉDIA</td><td class="risk-high">ALTO</td><td>Diferenciar por WhatsApp nativo e simplicidade</td></tr>
+      <tr><td>CAC alto para micro empresas</td><td class="risk-med">MÉDIA</td><td class="risk-med">MÉDIO</td><td>Canais orgânicos e indicação, evitar dependência de ads</td></tr>
+      <tr><td>Mercado Pago muda termos/API</td><td class="risk-low">BAIXA</td><td class="risk-high">ALTO</td><td>Ter alternativa (PagBank, Asaas)</td></tr>
+      <tr><td>Concorrente de nicho expande</td><td class="risk-med">MÉDIA</td><td class="risk-med">MÉDIO</td><td>Vantagem all-in-one, preço mais agressivo</td></tr>
+    </tbody>
+  </table>
+
+  <h2>11. Roadmap</h2>
+
+  <div class="roadmap-item">
+    <h3>NOW — Próximo trimestre</h3>
+    <ul>
+      <li>MVP: PDV + grade + mesas/comandas + NFC-e + WhatsApp + Pix</li>
+      <li>Landing page + waitlist</li>
+      <li>20-30 beta testers (mix de segmentos)</li>
+      <li>Plano grátis funcional</li>
+    </ul>
+  </div>
+
+  <div class="roadmap-item next">
+    <h3>NEXT — Trimestre seguinte</h3>
+    <ul>
+      <li>Checkout online com link de pagamento</li>
+      <li>Follow-up WhatsApp automatizado</li>
+      <li>Cashback</li>
+      <li>PWA otimizado (mobile)</li>
+      <li>100 usuários pagos</li>
+      <li>Conteúdo SEO</li>
+    </ul>
+  </div>
+
+  <div class="roadmap-item later">
+    <h3>LATER — Semestres seguintes</h3>
+    <ul>
+      <li>Integração marketplaces (iFood, ML, Shopee)</li>
+      <li>Multi-loja com estoque sincronizado</li>
+      <li>Dashboard financeiro (DRE simplificado)</li>
+      <li>API para contadores</li>
+      <li>Programa afiliados</li>
+      <li>Expansão nichos (calçados, acessórios, pet shops)</li>
+      <li>Cardápio digital QR code</li>
+    </ul>
+  </div>
+</div>
+
+<!-- 12. CONCLUSÃO -->
+<div class="page">
+  <h2>12. Conclusão</h2>
+
+  <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 20px;">
+    <div class="stat-card">
+      <span class="number">6-8M</span>
+      <span class="label">Negócios sem sistema — gap real</span>
+    </div>
+    <div class="stat-card">
+      <span class="number">71%</span>
+      <span class="label">Margem bruta</span>
+    </div>
+    <div class="stat-card">
+      <span class="number">R$ 365/mês</span>
+      <span class="label">Custo de infra para começar</span>
+    </div>
+  </div>
+
+  <div class="insight-box">
+    <p style="font-size: 13px;"><strong>O PDV-ZapFlow tem futuro? SIM.</strong></p>
+    <p>
+      <strong>Gap real:</strong> Ninguém combina PDV multi-segmento + WhatsApp + fiscal + cashback.<br>
+      <strong>Mercado gigante:</strong> 6-8 milhões de negócios sem sistema.<br>
+      <strong>Tendências a favor:</strong> WhatsApp commerce, Pix, NFC-e obrigatória.<br>
+      <strong>Custo baixo de infra:</strong> R$ 365/mês para começar.<br>
+      <strong>Margem alta:</strong> 71% bruta.<br>
+      <strong>Break-even rápido:</strong> 6 pagantes cobrem infra.
+    </p>
+  </div>
+
+  <div class="stat-card" style="margin-top: 20px; border: 2px solid var(--accent); background: rgba(34,197,94,0.05);">
+    <h3 style="text-align:center; margin-bottom: 12px;">Condição de Sucesso</h3>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span class="number">100</span>
+        <span class="label">Negócios em 3 meses</span>
+      </div>
+      <div class="stat-card">
+        <span class="number">NPS &gt; 40</span>
+        <span class="label">Satisfação do cliente</span>
+      </div>
+      <div class="stat-card">
+        <span class="number">&gt; 8%</span>
+        <span class="label">Conversão free-to-paid</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+    <p style="color: var(--text-muted); font-size: 10px;">PDV-ZapFlow | Confidencial | Abril 2026</p>
+  </div>
+</div>
+
+</body>
+</html>

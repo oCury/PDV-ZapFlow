@@ -19,6 +19,7 @@ import { CartBottomSheet } from "@/components/pos/cart-bottom-sheet";
 import { CashRegisterDrawer } from "@/components/pos/cash-register-drawer";
 import { ProductModal } from "@/components/product-modal";
 import type { CartItem } from "@/lib/validations/pos";
+import type { ProductVariant } from "@/hooks/useProducts";
 
 function PdvContent() {
   const searchParams = useSearchParams();
@@ -97,8 +98,47 @@ function PdvContent() {
     []
   );
 
+  const addVariantToCart = useCallback(
+    (product: Product, variant: ProductVariant) => {
+      const cartId = `${product.id}::${variant.id}`;
+      const variantPrice = variant.sell_price ?? product.sell_price;
+      const label = [variant.size, variant.color].filter(Boolean).join(" / ");
+      const displayName = label ? `${product.name} - ${label}` : product.name;
+
+      setCart((prev) => {
+        const existing = prev.find((item) => item.id === cartId);
+        if (existing) {
+          return prev.map((item) =>
+            item.id === cartId
+              ? { ...item, quantity: item.quantity + 1 }
+              : item
+          );
+        }
+        return [
+          ...prev,
+          {
+            id: cartId,
+            name: displayName,
+            quantity: 1,
+            unit_price: variantPrice,
+            productId: product.id,
+            variantId: variant.id,
+            size: variant.size,
+            color: variant.color ?? undefined,
+          },
+        ];
+      });
+
+      setScanStatus(`✓ ${displayName} adicionado`);
+      setTimeout(() => setScanStatus(null), 2000);
+    },
+    []
+  );
+
   const handleProductClick = useCallback(
     (product: Product) => {
+      // For variant products, stock is at variant level — PosProductGrid handles opening the selector
+      if (product.has_variants) return;
       if (product.stock_quantity <= 0) return;
       addProductToCart(product);
       setScanStatus(`✓ ${product.name} adicionado`);
@@ -201,9 +241,12 @@ function PdvContent() {
           customerPhone: tableOrder.phone,
           customerId: tableOrder.customerId ?? undefined,
           items: cart.map((item) => ({
-            productId: item.id,
+            productId: item.productId ?? item.id,
+            variantId: item.variantId,
             quantity: item.quantity,
             unitPrice: item.unit_price,
+            size: item.size,
+            color: item.color,
           })),
         }),
       });
@@ -323,6 +366,7 @@ function PdvContent() {
             loading={loading}
             error={error}
             onProductClick={handleProductClick}
+            onVariantClick={addVariantToCart}
             onAddNewProduct={() => setIsProductModalOpen(true)}
           />
         </div>

@@ -26,25 +26,78 @@ model User {
   @@map("users")
 }
 
+// ─── Category (Hierarchical) ────────────────────────────────────────────────
+
+model Category {
+  id          String     @id @default(cuid())
+  name        String
+  slug        String     @unique
+  parent_id   String?
+  image_url   String?
+  sort_order  Int        @default(0)
+  active      Boolean    @default(true)
+  created_at  DateTime   @default(now())
+  updated_at  DateTime   @updatedAt
+  parent      Category?  @relation("CategoryTree", fields: [parent_id], references: [id])
+  children    Category[] @relation("CategoryTree")
+  products    Product[]
+
+  @@index([parent_id])
+  @@index([slug])
+  @@map("categories")
+}
+
 // ─── Product ────────────────────────────────────────────────────────────────
 
 model Product {
-  id             String     @id @default(cuid())
+  id             String           @id @default(cuid())
   name           String
-  barcode        String     @unique
-  cost_price     Decimal    @db.Decimal(10, 2)
-  sell_price     Decimal    @db.Decimal(10, 2)
-  stock_quantity Int        @default(0)
-  min_stock      Int        @default(0)   // M2: alert threshold
-  category       String
+  barcode        String           @unique
+  cost_price     Decimal          @db.Decimal(10, 2)
+  sell_price     Decimal          @db.Decimal(10, 2)
+  stock_quantity Int              @default(0)
+  min_stock      Int              @default(0)   // M2: alert threshold
+  category       String           // legacy string category
+  category_id    String?          // FK to Category model
+  has_variants   Boolean          @default(false)
   image_url      String?
-  created_at     DateTime   @default(now())
-  updated_at     DateTime   @updatedAt
+  created_at     DateTime         @default(now())
+  updated_at     DateTime         @updatedAt
   sale_items     SaleItem[]
+  variants       ProductVariant[]
+  category_rel   Category?        @relation(fields: [category_id], references: [id])
 
   @@index([barcode])
   @@index([category])
+  @@index([category_id])
   @@map("products")
+}
+
+// ─── Product Variant (SKU: Tamanho + Estampa/Cor/Modelo) ────────────────────
+
+model ProductVariant {
+  id             String     @id @default(cuid())
+  product_id     String
+  sku            String     @unique
+  size           String     // P, M, G, GG, etc.
+  color          String?    // cor ou estampa
+  model          String?    // modelo específico
+  barcode        String?    @unique
+  stock_quantity Int        @default(0)
+  min_stock      Int        @default(0)
+  cost_price     Decimal?   @db.Decimal(10, 2) // override do produto base
+  sell_price     Decimal?   @db.Decimal(10, 2) // override do produto base
+  image_url      String?
+  active         Boolean    @default(true)
+  created_at     DateTime   @default(now())
+  updated_at     DateTime   @updatedAt
+  product        Product    @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  sale_items     SaleItem[]
+
+  @@index([product_id])
+  @@index([sku])
+  @@index([size])
+  @@map("product_variants")
 }
 
 // ─── Payment / Sale enums ───────────────────────────────────────────────────
@@ -112,6 +165,14 @@ model Sale {
   table_id         String?       // M5
   loyalty_discount Decimal?      @db.Decimal(10, 2) // M3: points used as discount
   notes            String?       // M5: order notes
+  // ── Shipping / Logistics ──────────────────────────────────────────────────
+  shipping_cost    Decimal?      @db.Decimal(10, 2)
+  shipping_method  String?       // "CORREIOS", "TRANSPORTADORA", "MOTOBOY", "RETIRADA", etc.
+  shipping_address String?       // endereço de entrega (JSON ou texto)
+  shipping_cep     String?       // CEP de destino
+  // ── Online checkout ───────────────────────────────────────────────────────
+  payment_link     String?       // link de pagamento gerado
+  channel          String        @default("PDV") // PDV, ONLINE, WHATSAPP
   created_at       DateTime      @default(now())
   items            SaleItem[]
   payments         SalePayment[]
@@ -121,6 +182,7 @@ model Sale {
 
   @@index([table_id])
   @@index([status])
+  @@index([channel])
   @@map("sales")
 }
 
@@ -158,14 +220,19 @@ model SaleItem {
   id         String  @id @default(cuid())
   sale_id    String
   product_id String
+  variant_id String? // FK to ProductVariant (SKU-level stock)
   quantity   Int
   unit_price Decimal @db.Decimal(10, 2)
+  size       String? // snapshot do tamanho vendido
+  color      String? // snapshot da cor/estampa vendida
 
-  sale    Sale    @relation(fields: [sale_id], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [product_id], references: [id])
+  sale    Sale            @relation(fields: [sale_id], references: [id], onDelete: Cascade)
+  product Product         @relation(fields: [product_id], references: [id])
+  variant ProductVariant? @relation(fields: [variant_id], references: [id])
 
   @@index([sale_id])
   @@index([product_id])
+  @@index([variant_id])
   @@map("sale_items")
 }
 

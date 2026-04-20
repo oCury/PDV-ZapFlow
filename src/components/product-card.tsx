@@ -1,4 +1,4 @@
-import { Package, Plus, Pencil, Trash2 } from "lucide-react";
+import { Package, Plus, Pencil, Trash2, Grid3X3 } from "lucide-react";
 
 export interface ProductCardProps {
   id: string;
@@ -9,6 +9,8 @@ export interface ProductCardProps {
   stock_quantity: number;
   min_stock?: number;
   category: string;
+  has_variants?: boolean;
+  variants?: { stock_quantity: number }[];
   image_url: string | null;
   onAddToCart?: (id: string) => void;
   onEdit?: (id: string) => void;
@@ -23,14 +25,18 @@ export function ProductCard({
   stock_quantity,
   min_stock = 5,
   category,
+  has_variants,
+  variants,
   image_url,
   onAddToCart,
   onEdit,
   onDelete,
 }: ProductCardProps) {
-  const inStock = stock_quantity > 0;
-  const lowStock = stock_quantity > 0 && stock_quantity <= min_stock;
-  const goodStock = stock_quantity > min_stock;
+  const totalStock = has_variants && variants?.length
+    ? variants.reduce((sum, v) => sum + v.stock_quantity, 0)
+    : stock_quantity;
+  const inStock = totalStock > 0;
+  const lowStock = totalStock > 0 && totalStock <= min_stock;
 
   return (
     <div className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden hover:border-slate-600 transition-colors duration-200 flex flex-col">
@@ -47,6 +53,12 @@ export function ProductCard({
         <span className="absolute top-2 left-2 bg-slate-900/80 text-slate-300 text-xs font-medium px-2.5 py-1 rounded-full">
           {category}
         </span>
+        {has_variants && variants && variants.length > 0 && (
+          <span className="absolute bottom-2 left-2 bg-brand-green/90 text-primary-dark text-xs font-bold px-2 py-0.5 rounded-lg flex items-center gap-1">
+            <Grid3X3 size={12} />
+            {variants.length} var.
+          </span>
+        )}
         {lowStock && (
           <span className="absolute top-2 right-2 bg-amber-500 text-white text-xs font-medium px-2.5 py-1 rounded-full">
             Estoque baixo
@@ -96,7 +108,7 @@ export function ProductCard({
             <p className={`text-xs font-bold ${
               !inStock ? "text-red-500" : lowStock ? "text-amber-400" : "text-emerald-400"
             }`}>
-              {stock_quantity} em estoque
+              {totalStock} em estoque
             </p>
           </div>
 

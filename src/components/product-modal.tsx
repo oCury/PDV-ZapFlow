@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { X, Loader2 } from "lucide-react";
+import { VariantGridManager } from "./variant-grid-manager";
 
 export interface ProductFormData {
   id?: string;
@@ -12,7 +13,25 @@ export interface ProductFormData {
   stock_quantity: string;
   min_stock: string;
   category: string;
+  category_id: string;
   image_url: string;
+}
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  parent_id: string | null;
+  children?: Category[];
+}
+
+interface Variant {
+  id: string;
+  sku: string;
+  size: string;
+  color: string | null;
+  stock_quantity: number;
+  sell_price: number | null;
 }
 
 const EMPTY_FORM: ProductFormData = {
@@ -23,6 +42,7 @@ const EMPTY_FORM: ProductFormData = {
   stock_quantity: "",
   min_stock: "",
   category: "",
+  category_id: "",
   image_url: "",
 };
 
@@ -42,22 +62,65 @@ export function ProductModal({
   const [form, setForm] = useState<ProductFormData>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [variants, setVariants] = useState<Variant[]>([]);
 
   const isEditing = !!editProduct?.id;
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await fetch("/api/categories?flat=true");
+      if (res.ok) {
+        const data = await res.json();
+        setCategories(data);
+      }
+    } catch {
+      // Categories are optional enhancement
+    }
+  }, []);
+
+  const fetchVariants = useCallback(async () => {
+    if (!editProduct?.id) return;
+    try {
+      const res = await fetch(`/api/products/${editProduct.id}/variants`);
+      if (res.ok) {
+        const data = await res.json();
+        setVariants(data.variants || []);
+      }
+    } catch {
+      // Variants fetch is best-effort
+    }
+  }, [editProduct?.id]);
 
   useEffect(() => {
     if (isOpen) {
       setForm(editProduct ?? EMPTY_FORM);
       setError(null);
+      setVariants([]);
+      fetchCategories();
+      if (editProduct?.id) {
+        fetchVariants();
+      }
     }
-  }, [isOpen, editProduct]);
+  }, [isOpen, editProduct, fetchCategories, fetchVariants]);
 
   if (!isOpen) return null;
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+
+    if (name === "category_id") {
+      const cat = categories.find((c) => c.id === value);
+      setForm((prev) => ({
+        ...prev,
+        category_id: value,
+        category: cat?.name || prev.category,
+      }));
+    } else {
+      setForm((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -79,6 +142,7 @@ export function ProductModal({
         stock_quantity: parseInt(form.stock_quantity) || 0,
         min_stock: parseInt(form.min_stock) || 0,
         category: form.category.trim(),
+        category_id: form.category_id || null,
         image_url: form.image_url.trim() || null,
       };
 
@@ -106,20 +170,36 @@ export function ProductModal({
     }
   };
 
+  // Build flat category options with indentation
+  const buildCategoryOptions = (cats: Category[], depth = 0): { id: string; label: string }[] => {
+    const result: { id: string; label: string }[] = [];
+    for (const cat of cats) {
+      result.push({ id: cat.id, label: "—".repeat(depth) + (depth > 0 ? " " : "") + cat.name });
+      if (cat.children?.length) {
+        result.push(...buildCategoryOptions(cat.children, depth + 1));
+      }
+    }
+    return result;
+  };
+
+  const categoryOptions = buildCategoryOptions(
+    categories.filter((c) => !c.parent_id)
+  );
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative bg-pure-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-gray-100">
-          <h2 className="text-lg font-bold text-primary-dark">
+      <div className="relative bg-pure-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-slate-700">
+          <h2 className="text-lg font-bold text-primary-dark dark:text-white">
             {isEditing ? "Editar Produto" : "Novo Produto"}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 transition-colors"
           >
             <X size={20} />
           </button>
@@ -127,26 +207,26 @@ export function ProductModal({
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {error && (
-            <div className="bg-red-50 text-red-700 text-sm font-medium px-4 py-3 rounded-xl">
+            <div className="bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 text-sm font-medium px-4 py-3 rounded-xl">
               {error}
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
               Nome do Produto *
             </label>
             <input
               name="name"
               value={form.name}
               onChange={handleChange}
-              placeholder="Ex: Coca-Cola 350ml"
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 font-bold placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
+              placeholder="Ex: Camiseta Malha Peruana"
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-700 text-sm text-gray-900 dark:text-white font-bold placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
               Código de Barras (EAN) *
             </label>
             <input
@@ -154,13 +234,13 @@ export function ProductModal({
               value={form.barcode}
               onChange={handleChange}
               placeholder="Ex: 7894900011517"
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-mono text-gray-900 font-bold placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-700 text-sm font-mono text-gray-900 dark:text-white font-bold placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Preço de Custo (R$)
               </label>
               <input
@@ -171,11 +251,11 @@ export function ProductModal({
                 value={form.cost_price}
                 onChange={handleChange}
                 placeholder="0.00"
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 font-bold placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-700 text-sm text-gray-900 dark:text-white font-bold placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Preço de Venda (R$) *
               </label>
               <input
@@ -186,14 +266,14 @@ export function ProductModal({
                 value={form.sell_price}
                 onChange={handleChange}
                 placeholder="0.00"
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 font-bold placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-700 text-sm text-gray-900 dark:text-white font-bold placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Estoque Atual
               </label>
               <input
@@ -203,11 +283,11 @@ export function ProductModal({
                 value={form.stock_quantity}
                 onChange={handleChange}
                 placeholder="0"
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 font-bold placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-700 text-sm text-gray-900 dark:text-white font-bold placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Estoque Mínimo
               </label>
               <input
@@ -217,25 +297,57 @@ export function ProductModal({
                 value={form.min_stock}
                 onChange={handleChange}
                 placeholder="0"
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 font-bold placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-700 text-sm text-gray-900 dark:text-white font-bold placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                 Categoria *
+              </label>
+              {categories.length > 0 ? (
+                <select
+                  name="category_id"
+                  value={form.category_id}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-700 text-sm text-gray-900 dark:text-white font-bold focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
+                >
+                  <option value="">Selecionar...</option>
+                  {categoryOptions.map((opt) => (
+                    <option key={opt.id} value={opt.id}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  name="category"
+                  value={form.category}
+                  onChange={handleChange}
+                  placeholder="Ex: Camisetas"
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-700 text-sm text-gray-900 dark:text-white font-bold placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Category text fallback when using select */}
+          {categories.length > 0 && !form.category_id && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                Ou digite a categoria
               </label>
               <input
                 name="category"
                 value={form.category}
                 onChange={handleChange}
-                placeholder="Ex: Bebidas"
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 font-bold placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
+                placeholder="Ex: Camisetas"
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-700 text-sm text-gray-900 dark:text-white font-bold placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
               />
             </div>
-          </div>
+          )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
               URL da Imagem (opcional)
             </label>
             <input
@@ -243,22 +355,33 @@ export function ProductModal({
               value={form.image_url}
               onChange={handleChange}
               placeholder="https://..."
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 font-bold placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-slate-600 dark:bg-slate-700 text-sm text-gray-900 dark:text-white font-bold placeholder:font-normal placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
             />
           </div>
+
+          {/* Variant management (only when editing) */}
+          {isEditing && editProduct?.id && (
+            <div className="border-t border-gray-100 dark:border-slate-700 pt-4">
+              <VariantGridManager
+                productId={editProduct.id}
+                variants={variants}
+                onRefresh={fetchVariants}
+              />
+            </div>
+          )}
 
           <div className="flex gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-3 rounded-2xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+              className="flex-1 px-4 py-3 rounded-2xl border border-gray-200 dark:border-slate-600 text-sm font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 bg-brand-green hover:bg-brand-green-hover disabled:bg-gray-300 disabled:cursor-not-allowed text-primary-dark font-bold py-3 rounded-2xl transition-colors duration-200 text-sm flex items-center justify-center gap-2"
+              className="flex-1 bg-brand-green hover:bg-brand-green-hover disabled:bg-gray-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed text-primary-dark font-bold py-3 rounded-2xl transition-colors duration-200 text-sm flex items-center justify-center gap-2"
             >
               {saving && <Loader2 size={16} className="animate-spin" />}
               {isEditing ? "Salvar Alterações" : "Salvar Produto"}

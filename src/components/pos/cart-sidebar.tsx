@@ -1,8 +1,15 @@
 "use client";
 
-import { ShoppingCart, Phone, Loader2 } from "lucide-react";
+import { ShoppingCart, Phone, Loader2, Truck } from "lucide-react";
 import type { CartItem } from "@/lib/validations/pos";
 import { CartItemCard } from "./cart-item-card";
+
+interface ShippingInfo {
+  method: string;
+  label: string;
+  price: number;
+  estimated_days: string;
+}
 
 interface CartSidebarProps {
   cart: CartItem[];
@@ -18,6 +25,8 @@ interface CartSidebarProps {
   requiresTablePhone?: boolean;
   onBackToTables?: () => void;
   isOpeningOrder?: boolean;
+  /** Shipping info */
+  shipping?: ShippingInfo | null;
 }
 
 function formatPhone(p: string) {
@@ -39,7 +48,12 @@ export function CartSidebar({
   requiresTablePhone = false,
   onBackToTables,
   isOpeningOrder = false,
+  shipping,
 }: CartSidebarProps) {
+  const subtotal = total;
+  const shippingCost = shipping?.price ?? 0;
+  const grandTotal = subtotal + shippingCost;
+
   return (
     <div className="flex flex-col h-full bg-slate-800/80 rounded-2xl border border-slate-600/50 overflow-hidden">
       <div className="p-4 border-b border-slate-600/50">
@@ -80,11 +94,33 @@ export function CartSidebar({
         )}
       </div>
 
-      <div className="p-4 border-t border-slate-600/50 space-y-4">
-        <div className="flex justify-between items-center">
+      <div className="p-4 border-t border-slate-600/50 space-y-3">
+        {/* Subtotal */}
+        <div className="flex justify-between items-center text-sm">
+          <span className="text-slate-400">Subtotal</span>
+          <span className="text-slate-200 font-semibold">
+            R$ {subtotal.toFixed(2)}
+          </span>
+        </div>
+
+        {/* Shipping */}
+        {shipping && (
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-slate-400 flex items-center gap-1.5">
+              <Truck size={14} />
+              {shipping.label}
+            </span>
+            <span className="text-slate-200 font-semibold">
+              {shipping.price === 0 ? "Grátis" : `R$ ${shipping.price.toFixed(2)}`}
+            </span>
+          </div>
+        )}
+
+        {/* Total */}
+        <div className="flex justify-between items-center pt-1">
           <span className="text-slate-400 font-medium">Total</span>
           <span className="text-2xl font-bold text-white">
-            R$ {total.toFixed(2)}
+            R$ {grandTotal.toFixed(2)}
           </span>
         </div>
 

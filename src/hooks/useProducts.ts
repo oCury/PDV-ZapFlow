@@ -2,6 +2,21 @@
 
 import { useState, useEffect, useCallback } from "react";
 
+export interface ProductVariant {
+  id: string;
+  sku: string;
+  size: string;
+  color: string | null;
+  model: string | null;
+  barcode: string | null;
+  stock_quantity: number;
+  min_stock: number;
+  cost_price: number | null;
+  sell_price: number | null;
+  image_url: string | null;
+  active: boolean;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -11,7 +26,10 @@ export interface Product {
   stock_quantity: number;
   min_stock: number;
   category: string;
+  category_id: string | null;
+  has_variants: boolean;
   image_url: string | null;
+  variants?: ProductVariant[];
 }
 
 export function useProducts() {

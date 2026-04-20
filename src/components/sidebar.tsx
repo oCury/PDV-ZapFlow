@@ -17,6 +17,7 @@ import {
   LogOut,
   MessageCircle,
   Gift,
+  FolderTree,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -32,6 +33,7 @@ const navItems: NavItem[] = [
   { href: "/pdv", label: "PDV", icon: ShoppingCart, adminOnly: false },
   { href: "/tables", label: "Mesas", icon: UtensilsCrossed, adminOnly: false },
   { href: "/products", label: "Produtos", icon: Package, adminOnly: false },
+  { href: "/categories", label: "Categorias", icon: FolderTree, adminOnly: true },
   { href: "/customers", label: "Clientes", icon: UserCheck, adminOnly: true },
   { href: "/cashback", label: "Cashback", icon: Gift, adminOnly: true },
   { href: "/sales", label: "Vendas", icon: Receipt, adminOnly: true },
