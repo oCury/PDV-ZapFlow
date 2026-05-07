@@ -41,6 +41,9 @@ export default function ProductsPage() {
       category: product.category,
       category_id: product.category_id || "",
       image_url: product.image_url || "",
+      ncm: product.ncm || "",
+      cfop: product.cfop || "",
+      fiscal_unit: product.fiscal_unit || "",
     });
     setModalOpen(true);
   };

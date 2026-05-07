@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 
 const SESSION_COOKIE = "zf_session";
-const SECRET = process.env.SESSION_SECRET || "zap-flow-dev-secret-change-in-production";
+const SECRET = process.env.SESSION_SECRET ?? "";
 
 interface SessionPayload {
   userId: string;
@@ -34,6 +34,7 @@ export async function getSessionFromRequest(
   if (parts.length !== 2) return null;
 
   const [payload, signature] = parts;
+  if (!SECRET) return null;
   const expected = await hmacSign(payload);
   if (expected !== signature) return null;
 

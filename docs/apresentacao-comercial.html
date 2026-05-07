@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDV ZapFlow — Sistema para Moda</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Archivo+Black&display=swap" rel="stylesheet">
+    <style>
+        /* ===========================================
+           VIEWPORT FITTING: MANDATORY BASE STYLES
+           =========================================== */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            height: 100%;
+            overflow-x: hidden;
+        }
+
+        html {
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+        }
+
+        .slide {
+            width: 100vw;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            scroll-snap-align: start;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .slide-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            max-height: 100%;
+            overflow: hidden;
+            padding: var(--slide-padding);
+        }
+
+        :root {
+            --title-size: clamp(1.8rem, 5vw, 4rem);
+            --h2-size: clamp(1.4rem, 3.5vw, 2.8rem);
+            --h3-size: clamp(1rem, 2.5vw, 1.75rem);
+            --body-size: clamp(0.8rem, 1.5vw, 1.2rem);
+            --small-size: clamp(0.7rem, 1vw, 0.9rem);
+
+            --slide-padding: clamp(1.5rem, 5vw, 5rem);
+            --content-gap: clamp(0.5rem, 2vw, 2rem);
+            --element-gap: clamp(0.25rem, 1vw, 1rem);
+
+            --green: #22c55e;
+            --green-hover: #16a34a;
+            --green-glow: rgba(34, 197, 94, 0.3);
+            --bg-dark: #0a0f0d;
+            --bg-card: #111916;
+            --bg-card-2: #162019;
+            --text-primary: #f0fdf4;
+            --text-secondary: #a7c4b5;
+            --text-muted: #6b8f7d;
+        }
+
+        body {
+            font-family: 'Space Grotesk', system-ui, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        /* ===========================================
+           THEME STYLES
+           =========================================== */
+
+        .slide {
+            background: var(--bg-dark);
+        }
+
+        h1, h2, h3 {
+            font-family: 'Archivo Black', 'Space Grotesk', sans-serif;
+            letter-spacing: -0.02em;
+        }
+
+        h1 { font-size: var(--title-size); }
+        h2 { font-size: var(--h2-size); }
+        h3 { font-size: var(--h3-size); }
+        p, li { font-size: var(--body-size); }
+
+        .accent { color: var(--green); }
+        .muted { color: var(--text-secondary); }
+
+        /* Decorative elements */
+        .glow-orb {
+            position: absolute;
+            border-radius: 50%;
+            background: var(--green-glow);
+            filter: blur(80px);
+            pointer-events: none;
+            opacity: 0.5;
+        }
+
+        .grid-bg {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(34, 197, 94, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(34, 197, 94, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid rgba(34, 197, 94, 0.15);
+            border-radius: clamp(8px, 1.5vw, 16px);
+            padding: clamp(0.75rem, 2vw, 1.5rem);
+        }
+
+        .card-highlight {
+            border-color: var(--green);
+            box-shadow: 0 0 20px var(--green-glow);
+        }
+
+        /* Grid layouts */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+            gap: clamp(0.75rem, 2vw, 1.5rem);
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+            gap: clamp(0.5rem, 1.5vw, 1rem);
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+            gap: clamp(0.5rem, 1.5vw, 1rem);
+        }
+
+        /* Tags */
+        .tag {
+            display: inline-block;
+            background: rgba(34, 197, 94, 0.12);
+            color: var(--green);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            padding: 0.2em 0.7em;
+            border-radius: 100px;
+            font-size: var(--small-size);
+            font-weight: 500;
+        }
+
+        /* Subtitle */
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: var(--body-size);
+            margin-top: var(--element-gap);
+            max-width: 600px;
+        }
+
+        /* Feature list */
+        .feature-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: clamp(0.4rem, 1vh, 0.8rem);
+        }
+
+        .feature-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5em;
+            font-size: var(--body-size);
+            color: var(--text-secondary);
+        }
+
+        .feature-list li::before {
+            content: "✓";
+            color: var(--green);
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        /* Price card for shipping */
+        .price-card {
+            background: var(--bg-card);
+            border: 1px solid rgba(34, 197, 94, 0.12);
+            border-radius: clamp(8px, 1.5vw, 12px);
+            padding: clamp(0.6rem, 1.5vw, 1.2rem);
+            text-align: center;
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .price-card:hover {
+            border-color: var(--green);
+            transform: translateY(-2px);
+        }
+
+        .price-card .emoji {
+            font-size: clamp(1.5rem, 3vw, 2.5rem);
+            display: block;
+            margin-bottom: 0.3em;
+        }
+
+        .price-card .method {
+            font-weight: 700;
+            font-size: var(--body-size);
+            color: var(--text-primary);
+        }
+
+        .price-card .price {
+            color: var(--green);
+            font-weight: 700;
+            font-size: clamp(1rem, 2vw, 1.5rem);
+            margin: 0.2em 0;
+        }
+
+        .price-card .detail {
+            color: var(--text-muted);
+            font-size: var(--small-size);
+        }
+
+        /* Category tree */
+        .category-tree {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(0.3rem, 0.8vh, 0.6rem);
+        }
+
+        .cat-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5em;
+            padding: clamp(0.4rem, 1vw, 0.7rem) clamp(0.6rem, 1.5vw, 1rem);
+            background: var(--bg-card);
+            border-radius: 8px;
+            border-left: 3px solid var(--green);
+            font-size: var(--body-size);
+            transition: transform 0.2s ease;
+        }
+
+        .cat-item:hover {
+            transform: translateX(4px);
+        }
+
+        .cat-item.sub {
+            margin-left: clamp(1rem, 3vw, 2rem);
+            border-left-color: rgba(34, 197, 94, 0.4);
+            background: var(--bg-card-2);
+        }
+
+        .cat-item.sub-2 {
+            margin-left: clamp(2rem, 6vw, 4rem);
+            border-left-color: rgba(34, 197, 94, 0.2);
+            background: rgba(22, 32, 25, 0.6);
+        }
+
+        /* Navigation */
+        .nav-dots {
+            position: fixed;
+            right: clamp(0.5rem, 2vw, 1.5rem);
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 100;
+        }
+
+        .nav-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(34, 197, 94, 0.3);
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            padding: 0;
+        }
+
+        .nav-dot.active {
+            background: var(--green);
+            box-shadow: 0 0 8px var(--green-glow);
+            transform: scale(1.4);
+        }
+
+        .keyboard-hint {
+            position: fixed;
+            bottom: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            color: var(--text-muted);
+            font-size: var(--small-size);
+            opacity: 0.6;
+            z-index: 100;
+        }
+
+        /* Slide counter */
+        .slide-counter {
+            position: fixed;
+            top: 1rem;
+            right: clamp(0.5rem, 2vw, 1.5rem);
+            color: var(--text-muted);
+            font-size: var(--small-size);
+            font-family: 'Space Grotesk', monospace;
+            z-index: 100;
+        }
+
+        /* Animations */
+        .reveal {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .reveal-delay-1 { transition-delay: 0.1s; }
+        .reveal-delay-2 { transition-delay: 0.2s; }
+        .reveal-delay-3 { transition-delay: 0.3s; }
+        .reveal-delay-4 { transition-delay: 0.4s; }
+
+        /* CTA button */
+        .cta-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5em;
+            background: var(--green);
+            color: var(--bg-dark);
+            font-weight: 700;
+            font-size: var(--body-size);
+            padding: 0.7em 1.5em;
+            border-radius: 100px;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.2s ease;
+        }
+
+        .cta-btn:hover {
+            background: var(--green-hover);
+            transform: scale(1.03);
+        }
+
+        /* Responsive adjustments */
+        @media (max-height: 700px) {
+            :root {
+                --slide-padding: clamp(1rem, 3vw, 3rem);
+                --content-gap: clamp(0.4rem, 1.5vw, 1rem);
+                --title-size: clamp(1.4rem, 4.5vw, 2.8rem);
+                --h2-size: clamp(1.1rem, 3vw, 2rem);
+            }
+        }
+
+        @media (max-height: 600px) {
+            :root {
+                --slide-padding: clamp(0.75rem, 2.5vw, 2rem);
+                --content-gap: clamp(0.3rem, 1vw, 0.75rem);
+                --title-size: clamp(1.2rem, 4vw, 2rem);
+                --body-size: clamp(0.7rem, 1.2vw, 0.95rem);
+            }
+            .nav-dots, .keyboard-hint { display: none; }
+        }
+
+        @media (max-width: 600px) {
+            :root {
+                --title-size: clamp(1.5rem, 8vw, 2.5rem);
+            }
+            .grid-4 { grid-template-columns: repeat(2, 1fr); }
+            .nav-dots { display: none; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.2s !important;
+            }
+            html { scroll-behavior: auto; }
+            .reveal { opacity: 1; transform: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation Dots -->
+    <nav class="nav-dots" aria-label="Navegação dos slides"></nav>
+    <div class="slide-counter"><span id="current">1</span> / <span id="total">9</span></div>
+    <div class="keyboard-hint">↓ scroll · setas · swipe</div>
+
+    <!-- ============================================
+         SLIDE 1: ABERTURA
+         ============================================ -->
+    <section class="slide" data-slide="1">
+        <div class="glow-orb" style="width: 400px; height: 400px; top: -100px; right: -100px;"></div>
+        <div class="glow-orb" style="width: 300px; height: 300px; bottom: -50px; left: -50px;"></div>
+        <div class="grid-bg"></div>
+        <div class="slide-content" style="align-items: center; text-align: center;">
+            <div class="reveal">
+                <span class="tag">Sistema PDV para Moda</span>
+            </div>
+            <h1 class="reveal reveal-delay-1" style="margin-top: var(--content-gap);">
+                <span class="accent">PDV</span> ZapFlow
+            </h1>
+            <p class="subtitle reveal reveal-delay-2" style="text-align: center; max-width: 500px;">
+                O ponto de venda completo para quem vende moda no Brasil. Simples, rapido e inteligente.
+            </p>
+            <div class="reveal reveal-delay-3" style="margin-top: var(--content-gap); display: flex; gap: 1em; flex-wrap: wrap; justify-content: center;">
+                <span class="tag">👗 Moda</span>
+                <span class="tag">📦 Entregas</span>
+                <span class="tag">💰 Vendas</span>
+                <span class="tag">📱 WhatsApp</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================
+         SLIDE 2: VISAO GERAL
+         ============================================ -->
+    <section class="slide" data-slide="2">
+        <div class="grid-bg"></div>
+        <div class="slide-content">
+            <h2 class="reveal">🎯 Tudo que sua loja precisa</h2>
+            <p class="subtitle reveal reveal-delay-1">Um unico sistema que cuida de toda a operacao — da vitrine ate a entrega.</p>
+            <div class="grid-3 reveal reveal-delay-2" style="margin-top: var(--content-gap);">
+                <div class="card">
+                    <div style="font-size: clamp(1.5rem, 3vw, 2rem); margin-bottom: 0.3em;">🛒</div>
+                    <strong>Venda Presencial</strong>
+                    <p class="muted" style="font-size: var(--small-size);">PDV rapido com leitor de codigo de barras</p>
+                </div>
+                <div class="card">
+                    <div style="font-size: clamp(1.5rem, 3vw, 2rem); margin-bottom: 0.3em;">🌐</div>
+                    <strong>Venda Online</strong>
+                    <p class="muted" style="font-size: var(--small-size);">Link de pagamento e frete calculado</p>
+                </div>
+                <div class="card">
+                    <div style="font-size: clamp(1.5rem, 3vw, 2rem); margin-bottom: 0.3em;">📱</div>
+                    <strong>WhatsApp</strong>
+                    <p class="muted" style="font-size: var(--small-size);">Venda e acompanhe pelo WhatsApp</p>
+                </div>
+                <div class="card">
+                    <div style="font-size: clamp(1.5rem, 3vw, 2rem); margin-bottom: 0.3em;">📊</div>
+                    <strong>Controle Total</strong>
+                    <p class="muted" style="font-size: var(--small-size);">Estoque, financeiro e relatorios</p>
+                </div>
+                <div class="card">
+                    <div style="font-size: clamp(1.5rem, 3vw, 2rem); margin-bottom: 0.3em;">🧾</div>
+                    <strong>Nota Fiscal</strong>
+                    <p class="muted" style="font-size: var(--small-size);">NFC-e automatica em cada venda</p>
+                </div>
+                <div class="card">
+                    <div style="font-size: clamp(1.5rem, 3vw, 2rem); margin-bottom: 0.3em;">💚</div>
+                    <strong>Fidelidade</strong>
+                    <p class="muted" style="font-size: var(--small-size);">Cashback que traz o cliente de volta</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================
+         SLIDE 3: CATEGORIAS - INTRO
+         ============================================ -->
+    <section class="slide" data-slide="3">
+        <div class="glow-orb" style="width: 300px; height: 300px; top: 20%; left: -80px;"></div>
+        <div class="grid-bg"></div>
+        <div class="slide-content">
+            <span class="tag reveal">Organizacao Inteligente</span>
+            <h2 class="reveal reveal-delay-1" style="margin-top: var(--element-gap);">🗂️ Categorias que fazem sentido</h2>
+            <p class="subtitle reveal reveal-delay-2">Organize seus produtos do jeito que sua equipe pensa. Emojis, subcategorias e busca rapida.</p>
+            <div class="grid-2 reveal reveal-delay-3" style="margin-top: var(--content-gap);">
+                <div>
+                    <div class="category-tree">
+                        <div class="cat-item">👗 Vestidos</div>
+                        <div class="cat-item sub">Vestido Longo</div>
+                        <div class="cat-item sub">Vestido Curto</div>
+                        <div class="cat-item">👖 Calcas</div>
+                        <div class="cat-item sub">Jeans</div>
+                        <div class="cat-item sub">Alfaiataria</div>
+                        <div class="cat-item">👟 Calcados</div>
+                        <div class="cat-item sub">Tenis</div>
+                        <div class="cat-item sub">Sandalia</div>
+                    </div>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: var(--element-gap); justify-content: center;">
+                    <div class="card">
+                        <strong class="accent">Ilimitado</strong>
+                        <p class="muted" style="font-size: var(--small-size);">Crie quantas categorias e subcategorias precisar</p>
+                    </div>
+                    <div class="card">
+                        <strong class="accent">Visual com Emojis</strong>
+                        <p class="muted" style="font-size: var(--small-size);">Atendentes encontram tudo rapido, sem treinamento</p>
+                    </div>
+                    <div class="card">
+                        <strong class="accent">Filtro no PDV</strong>
+                        <p class="muted" style="font-size: var(--small-size);">Cliente pede "calca jeans"? Um toque e pronto</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================
+         SLIDE 4: CATEGORIAS - BENEFICIOS
+         ============================================ -->
+    <section class="slide" data-slide="4">
+        <div class="grid-bg"></div>
+        <div class="slide-content">
+            <h2 class="reveal">📂 Por que categorizar importa?</h2>
+            <p class="subtitle reveal reveal-delay-1">Quem organiza, vende mais rapido e erra menos.</p>
+            <div class="grid-2 reveal reveal-delay-2" style="margin-top: var(--content-gap);">
+                <div class="card card-highlight">
+                    <h3 style="font-size: var(--body-size); margin-bottom: 0.5em;">⚡ Atendimento rapido</h3>
+                    <p class="muted" style="font-size: var(--small-size);">Vendedor encontra o produto em segundos usando categorias visuais. Menos espera = mais vendas.</p>
+                </div>
+                <div class="card">
+                    <h3 style="font-size: var(--body-size); margin-bottom: 0.5em;">📈 Relatorios por categoria</h3>
+                    <p class="muted" style="font-size: var(--small-size);">Saiba qual tipo de roupa vende mais. Invista certo nas compras do proximo mes.</p>
+                </div>
+                <div class="card">
+                    <h3 style="font-size: var(--body-size); margin-bottom: 0.5em;">🎯 Comissao por tipo</h3>
+                    <p class="muted" style="font-size: var(--small-size);">Pague comissoes diferentes por categoria. 8% em vestidos, 3% em basicos.</p>
+                </div>
+                <div class="card">
+                    <h3 style="font-size: var(--body-size); margin-bottom: 0.5em;">👀 Estoque inteligente</h3>
+                    <p class="muted" style="font-size: var(--small-size);">Alerta automatico quando uma categoria inteira esta com estoque baixo.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================
+         SLIDE 5: CALCULO DE ENTREGA - INTRO
+         ============================================ -->
+    <section class="slide" data-slide="5">
+        <div class="glow-orb" style="width: 350px; height: 350px; bottom: -80px; right: -80px;"></div>
+        <div class="grid-bg"></div>
+        <div class="slide-content">
+            <span class="tag reveal">Logistica Simplificada</span>
+            <h2 class="reveal reveal-delay-1" style="margin-top: var(--element-gap);">🚚 Calcule o frete em segundos</h2>
+            <p class="subtitle reveal reveal-delay-2">Seu cliente digita o CEP e ve todas as opcoes na hora. Voce vende para o Brasil inteiro sem complicacao.</p>
+            <div class="grid-4 reveal reveal-delay-3" style="margin-top: var(--content-gap);">
+                <div class="price-card">
+                    <span class="emoji">📦</span>
+                    <div class="method">PAC</div>
+                    <div class="price">R$ 15+</div>
+                    <div class="detail">Base + R$2/kg</div>
+                    <div class="detail">7-10 dias uteis</div>
+                </div>
+                <div class="price-card">
+                    <span class="emoji">⚡</span>
+                    <div class="method">SEDEX</div>
+                    <div class="price">R$ 25+</div>
+                    <div class="detail">Base + R$4/kg</div>
+                    <div class="detail">3-5 dias uteis</div>
+                </div>
+                <div class="price-card">
+                    <span class="emoji">🏍️</span>
+                    <div class="method">Motoboy</div>
+                    <div class="price">R$ 12</div>
+                    <div class="detail">Valor fixo</div>
+                    <div class="detail">Mesmo dia!</div>
+                </div>
+                <div class="price-card">
+                    <span class="emoji">🏪</span>
+                    <div class="method">Retirada</div>
+                    <div class="price">Gratis</div>
+                    <div class="detail">Na loja</div>
+                    <div class="detail">Imediato</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================
+         SLIDE 6: CALCULO DE ENTREGA - COMO FUNCIONA
+         ============================================ -->
+    <section class="slide" data-slide="6">
+        <div class="grid-bg"></div>
+        <div class="slide-content">
+            <h2 class="reveal">📍 Como funciona na pratica?</h2>
+            <p class="subtitle reveal reveal-delay-1">Automatico. Sem tabela de frete manual. Sem erro humano.</p>
+            <div class="reveal reveal-delay-2" style="margin-top: var(--content-gap); display: flex; flex-direction: column; gap: var(--element-gap);">
+                <div class="card" style="display: flex; align-items: center; gap: 1em;">
+                    <span style="font-size: clamp(1.5rem, 3vw, 2.5rem); flex-shrink: 0;">1️⃣</span>
+                    <div>
+                        <strong>Cliente informa o CEP</strong>
+                        <p class="muted" style="font-size: var(--small-size);">No PDV, no link de pagamento ou pelo WhatsApp</p>
+                    </div>
+                </div>
+                <div class="card" style="display: flex; align-items: center; gap: 1em;">
+                    <span style="font-size: clamp(1.5rem, 3vw, 2.5rem); flex-shrink: 0;">2️⃣</span>
+                    <div>
+                        <strong>Sistema calcula automaticamente</strong>
+                        <p class="muted" style="font-size: var(--small-size);">Peso dos itens + distancia = opcoes com preco e prazo</p>
+                    </div>
+                </div>
+                <div class="card" style="display: flex; align-items: center; gap: 1em;">
+                    <span style="font-size: clamp(1.5rem, 3vw, 2.5rem); flex-shrink: 0;">3️⃣</span>
+                    <div>
+                        <strong>Cliente escolhe a opcao</strong>
+                        <p class="muted" style="font-size: var(--small-size);">PAC economico, SEDEX rapido, motoboy no mesmo dia ou retira gratis</p>
+                    </div>
+                </div>
+                <div class="card" style="display: flex; align-items: center; gap: 1em;">
+                    <span style="font-size: clamp(1.5rem, 3vw, 2.5rem); flex-shrink: 0;">4️⃣</span>
+                    <div>
+                        <strong>Frete somado ao total</strong>
+                        <p class="muted" style="font-size: var(--small-size);">Transparente no recibo, na nota fiscal e no link de pagamento</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================
+         SLIDE 7: VENDA MULTICANAL
+         ============================================ -->
+    <section class="slide" data-slide="7">
+        <div class="glow-orb" style="width: 250px; height: 250px; top: 10%; right: 10%;"></div>
+        <div class="grid-bg"></div>
+        <div class="slide-content">
+            <h2 class="reveal">🌍 Venda de qualquer lugar</h2>
+            <p class="subtitle reveal reveal-delay-1">Loja fisica + online + WhatsApp. Tudo no mesmo sistema, sem retrabalho.</p>
+            <div class="grid-3 reveal reveal-delay-2" style="margin-top: var(--content-gap);">
+                <div class="card" style="text-align: center;">
+                    <div style="font-size: clamp(2rem, 4vw, 3rem); margin-bottom: 0.3em;">🏪</div>
+                    <strong>Loja Fisica</strong>
+                    <p class="muted" style="font-size: var(--small-size); margin-top: 0.3em;">Caixa com leitor de barras, grade de tamanhos, impressora termica</p>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <div style="font-size: clamp(2rem, 4vw, 3rem); margin-bottom: 0.3em;">💳</div>
+                    <strong>Link de Pagamento</strong>
+                    <p class="muted" style="font-size: var(--small-size); margin-top: 0.3em;">Envia link Mercado Pago, cliente paga onde estiver</p>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <div style="font-size: clamp(2rem, 4vw, 3rem); margin-bottom: 0.3em;">📱</div>
+                    <strong>WhatsApp</strong>
+                    <p class="muted" style="font-size: var(--small-size); margin-top: 0.3em;">Pedido pelo WhatsApp com frete + pagamento integrado</p>
+                </div>
+            </div>
+            <div class="reveal reveal-delay-3" style="margin-top: var(--content-gap);">
+                <ul class="feature-list">
+                    <li>Estoque unificado — venda no balcao ou online sem conflito</li>
+                    <li>Calculo de frete integrado em todos os canais</li>
+                    <li>NFC-e emitida independente do canal de venda</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================
+         SLIDE 8: MAIS BENEFICIOS
+         ============================================ -->
+    <section class="slide" data-slide="8">
+        <div class="grid-bg"></div>
+        <div class="slide-content">
+            <h2 class="reveal">💎 E tem mais...</h2>
+            <div class="grid-2 reveal reveal-delay-1" style="margin-top: var(--content-gap);">
+                <div>
+                    <ul class="feature-list">
+                        <li>Grade de tamanho/cor com estoque individual por SKU</li>
+                        <li>Multi-pagamento: PIX + cartao + dinheiro na mesma venda</li>
+                        <li>Cashback automatico: cliente volta em 15 dias</li>
+                        <li>Nota fiscal NFC-e emitida em cada venda</li>
+                    </ul>
+                </div>
+                <div>
+                    <ul class="feature-list">
+                        <li>Trocas e devolucoes com vale-troca digital</li>
+                        <li>Relatorios: curva ABC, margem, giro de estoque</li>
+                        <li>Funciona offline — internet caiu? Continua vendendo</li>
+                        <li>Comissoes automaticas por vendedor</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="reveal reveal-delay-2" style="margin-top: var(--content-gap); display: flex; gap: 1em; flex-wrap: wrap;">
+                <span class="tag">✅ Sem mensalidade surpresa</span>
+                <span class="tag">✅ Dados seus, na sua nuvem</span>
+                <span class="tag">✅ Suporte humanizado</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================
+         SLIDE 9: ENCERRAMENTO / CTA
+         ============================================ -->
+    <section class="slide" data-slide="9">
+        <div class="glow-orb" style="width: 500px; height: 500px; top: 50%; left: 50%; transform: translate(-50%, -50%);"></div>
+        <div class="grid-bg"></div>
+        <div class="slide-content" style="align-items: center; text-align: center;">
+            <h2 class="reveal">🚀 Pronto para vender mais?</h2>
+            <p class="subtitle reveal reveal-delay-1" style="text-align: center; max-width: 500px;">
+                Organize suas categorias, entregue para o Brasil inteiro e faca sua loja crescer com o PDV ZapFlow.
+            </p>
+            <div class="reveal reveal-delay-2" style="margin-top: var(--content-gap);">
+                <button class="cta-btn">Quero comecar agora →</button>
+            </div>
+            <div class="reveal reveal-delay-3" style="margin-top: var(--content-gap); display: flex; gap: 1.5em; flex-wrap: wrap; justify-content: center;">
+                <span class="muted" style="font-size: var(--small-size);">📞 Fale conosco</span>
+                <span class="muted" style="font-size: var(--small-size);">📱 WhatsApp</span>
+                <span class="muted" style="font-size: var(--small-size);">💻 Demonstracao gratuita</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================
+         JAVASCRIPT: Navigation Controller
+         ============================================ -->
+    <script>
+        class PresentationController {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.totalSlides = this.slides.length;
+                this.currentSlide = 0;
+                this.isAnimating = false;
+
+                document.getElementById('total').textContent = this.totalSlides;
+
+                this.buildNavDots();
+                this.setupObserver();
+                this.setupKeyboard();
+                this.setupWheel();
+                this.setupTouch();
+                this.updateUI();
+            }
+
+            buildNavDots() {
+                const nav = document.querySelector('.nav-dots');
+                for (let i = 0; i < this.totalSlides; i++) {
+                    const dot = document.createElement('button');
+                    dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
+                    dot.setAttribute('aria-label', `Slide ${i + 1}`);
+                    dot.addEventListener('click', () => this.goTo(i));
+                    nav.appendChild(dot);
+                }
+            }
+
+            setupObserver() {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const idx = Array.from(this.slides).indexOf(entry.target);
+                            this.currentSlide = idx;
+                            this.updateUI();
+                            // Trigger reveal animations
+                            entry.target.querySelectorAll('.reveal').forEach(el => {
+                                el.classList.add('visible');
+                            });
+                        }
+                    });
+                }, { threshold: 0.5 });
+
+                this.slides.forEach(slide => observer.observe(slide));
+            }
+
+            setupKeyboard() {
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === ' ') {
+                        e.preventDefault();
+                        this.next();
+                    } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                        e.preventDefault();
+                        this.prev();
+                    }
+                });
+            }
+
+            setupWheel() {
+                let lastWheel = 0;
+                document.addEventListener('wheel', (e) => {
+                    const now = Date.now();
+                    if (now - lastWheel < 800) return;
+                    lastWheel = now;
+                    if (e.deltaY > 0) this.next();
+                    else if (e.deltaY < 0) this.prev();
+                }, { passive: true });
+            }
+
+            setupTouch() {
+                let startY = 0;
+                document.addEventListener('touchstart', (e) => {
+                    startY = e.touches[0].clientY;
+                }, { passive: true });
+                document.addEventListener('touchend', (e) => {
+                    const diff = startY - e.changedTouches[0].clientY;
+                    if (Math.abs(diff) > 50) {
+                        if (diff > 0) this.next();
+                        else this.prev();
+                    }
+                }, { passive: true });
+            }
+
+            goTo(index) {
+                if (index < 0 || index >= this.totalSlides) return;
+                this.slides[index].scrollIntoView({ behavior: 'smooth' });
+                this.currentSlide = index;
+                this.updateUI();
+            }
+
+            next() { this.goTo(this.currentSlide + 1); }
+            prev() { this.goTo(this.currentSlide - 1); }
+
+            updateUI() {
+                document.getElementById('current').textContent = this.currentSlide + 1;
+                document.querySelectorAll('.nav-dot').forEach((dot, i) => {
+                    dot.classList.toggle('active', i === this.currentSlide);
+                });
+            }
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            new PresentationController();
+            // Trigger first slide reveals
+            document.querySelector('.slide').querySelectorAll('.reveal').forEach(el => {
+                el.classList.add('visible');
+            });
+        });
+    </script>
+</body>
+</html>

@@ -18,8 +18,14 @@ import {
   MessageCircle,
   Gift,
   FolderTree,
+  FileText,
+  Percent,
+  ArrowLeftRight,
+  Ticket,
+  Tag,
+  BarChart3,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface NavItem {
   href: string;
@@ -37,6 +43,12 @@ const navItems: NavItem[] = [
   { href: "/customers", label: "Clientes", icon: UserCheck, adminOnly: true },
   { href: "/cashback", label: "Cashback", icon: Gift, adminOnly: true },
   { href: "/sales", label: "Vendas", icon: Receipt, adminOnly: true },
+  { href: "/exchanges", label: "Trocas", icon: ArrowLeftRight, adminOnly: true },
+  { href: "/vouchers", label: "Vales", icon: Ticket, adminOnly: true },
+  { href: "/commissions", label: "Comissões", icon: Percent, adminOnly: true },
+  { href: "/labels", label: "Etiquetas", icon: Tag, adminOnly: true },
+  { href: "/reports", label: "Relatórios", icon: BarChart3, adminOnly: true },
+  { href: "/fiscal", label: "Fiscal", icon: FileText, adminOnly: true },
   { href: "/followups", label: "Follow-up", icon: MessageCircle, adminOnly: true },
   { href: "/staff", label: "Equipe", icon: Users, adminOnly: true },
   { href: "/settings", label: "Configurações", icon: Settings, adminOnly: true },
@@ -53,17 +65,35 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [user, setUser] = useState<UserInfo | null>(null);
 
+  const userFetched = useRef(false);
+
   useEffect(() => {
+    if (userFetched.current) return;
+    userFetched.current = true;
+
+    // Check session cache first
+    try {
+      const cached = sessionStorage.getItem("sidebar_user");
+      if (cached) {
+        setUser(JSON.parse(cached));
+        return;
+      }
+    } catch { /* ignore */ }
+
     fetch("/api/auth/me")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data?.user) setUser(data.user);
+        if (data?.user) {
+          setUser(data.user);
+          try { sessionStorage.setItem("sidebar_user", JSON.stringify(data.user)); } catch { /* ignore */ }
+        }
       })
       .catch(() => {});
   }, []);
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
+    try { sessionStorage.removeItem("sidebar_user"); } catch { /* ignore */ }
     router.push("/login");
     router.refresh();
   };

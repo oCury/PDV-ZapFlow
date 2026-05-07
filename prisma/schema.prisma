@@ -22,6 +22,10 @@ model User {
   created_at           DateTime             @default(now())
   updated_at           DateTime             @updatedAt
   cash_register_shifts CashRegisterShift[]
+  commission_rules     CommissionRule[]
+  sales_goals          SalesGoal[]
+  sales_as_seller      Sale[]              @relation("SellerSales")
+  processed_exchanges  Exchange[]
 
   @@map("users")
 }
@@ -39,8 +43,9 @@ model Category {
   created_at  DateTime   @default(now())
   updated_at  DateTime   @updatedAt
   parent      Category?  @relation("CategoryTree", fields: [parent_id], references: [id])
-  children    Category[] @relation("CategoryTree")
-  products    Product[]
+  children           Category[]               @relation("CategoryTree")
+  products           Product[]
+  commission_rules   CommissionCategoryRule[]
 
   @@index([parent_id])
   @@index([slug])
@@ -61,6 +66,10 @@ model Product {
   category_id    String?          // FK to Category model
   has_variants   Boolean          @default(false)
   image_url      String?
+  // ── Fiscal fields ──
+  ncm            String?          // NCM 8 dígitos
+  cfop           String?          @default("5102")
+  fiscal_unit    String?          @default("UN")
   created_at     DateTime         @default(now())
   updated_at     DateTime         @updatedAt
   sale_items     SaleItem[]
@@ -107,6 +116,48 @@ enum PaymentMethod {
   CARD
   PIX
   LOYALTY // M3: loyalty points as payment
+  VOUCHER // M6: vale-troca / vale-presente
+}
+
+enum CommissionType {
+  FIXED_PERCENT     // % fixa sobre valor da venda
+  CATEGORY_PERCENT  // % variável por categoria
+  TIERED            // escalonada por faixa de faturamento
+}
+
+// ─── Exchange enums ─────────────────────────────────────────────────────────
+
+enum ExchangeStatus {
+  PENDING
+  APPROVED
+  COMPLETED
+  CANCELLED
+}
+
+enum ExchangeReason {
+  WRONG_SIZE
+  DEFECT
+  DISLIKE
+  OTHER
+}
+
+enum ExchangeItemAction {
+  RETURN     // devolução pura (crédito)
+  EXCHANGE   // troca por outro item
+}
+
+// ─── Voucher enums ──────────────────────────────────────────────────────────
+
+enum VoucherType {
+  EXCHANGE   // gerado por troca
+  GIFT       // vale-presente comprado
+}
+
+enum VoucherStatus {
+  ACTIVE
+  USED       // totalmente utilizado
+  EXPIRED
+  CANCELLED
 }
 
 enum SaleStatus {
@@ -131,6 +182,7 @@ model Customer {
   updated_at     DateTime @updatedAt
   sales          Sale[]
   followups      CustomerFollowup[]
+  vouchers       Voucher[]
 
   @@index([phone])
   @@index([cpf])
@@ -163,6 +215,7 @@ model Sale {
   status           SaleStatus    @default(PENDING)
   customer_id      String?
   table_id         String?       // M5
+  seller_id        String?       // vendedor que realizou a venda
   loyalty_discount Decimal?      @db.Decimal(10, 2) // M3: points used as discount
   notes            String?       // M5: order notes
   // ── Shipping / Logistics ──────────────────────────────────────────────────
@@ -173,16 +226,32 @@ model Sale {
   // ── Online checkout ───────────────────────────────────────────────────────
   payment_link     String?       // link de pagamento gerado
   channel          String        @default("PDV") // PDV, ONLINE, WHATSAPP
+  // ── NFC-e fields ──
+  nfce_status      String?       // "pending", "authorized", "error", "cancelled", "contingency"
+  nfce_access_key  String?       // chave de acesso 44 dígitos
+  nfce_qr_url      String?       // URL do QR code
+  nfce_danfe_url   String?       // URL do PDF DANFE
+  nfce_protocol    String?       // número do protocolo
+  nfce_number      Int?          // número sequencial da nota
+  nfce_series      Int?          @default(1)
+  nfce_errors      String?       // JSON com erros da SEFAZ
   created_at       DateTime      @default(now())
   items            SaleItem[]
   payments         SalePayment[]
-  customer         Customer?     @relation(fields: [customer_id], references: [id])
-  table            Table?        @relation(fields: [table_id], references: [id]) // M5
+  customer         Customer?         @relation(fields: [customer_id], references: [id])
+  table            Table?            @relation(fields: [table_id], references: [id]) // M5
+  seller           User?             @relation("SellerSales", fields: [seller_id], references: [id])
   followup         CustomerFollowup?
+  fiscal_queue     FiscalQueue?
+  fiscal_events    FiscalEvent[]
+  exchanges        Exchange[]
+  voucher_usages   VoucherUsage[]
 
   @@index([table_id])
+  @@index([seller_id])
   @@index([status])
   @@index([channel])
+  @@index([created_at])
   @@map("sales")
 }
 
@@ -226,9 +295,10 @@ model SaleItem {
   size       String? // snapshot do tamanho vendido
   color      String? // snapshot da cor/estampa vendida
 
-  sale    Sale            @relation(fields: [sale_id], references: [id], onDelete: Cascade)
-  product Product         @relation(fields: [product_id], references: [id])
-  variant ProductVariant? @relation(fields: [variant_id], references: [id])
+  sale           Sale            @relation(fields: [sale_id], references: [id], onDelete: Cascade)
+  product        Product         @relation(fields: [product_id], references: [id])
+  variant        ProductVariant? @relation(fields: [variant_id], references: [id])
+  exchange_items ExchangeItem[]
 
   @@index([sale_id])
   @@index([product_id])
@@ -267,4 +337,176 @@ model StoreSettings {
   updated_at DateTime @updatedAt
 
   @@map("store_settings")
+}
+
+// ─── Commission (F4) ────────────────────────────────────────────────────────
+
+model CommissionRule {
+  id              String                  @id @default(cuid())
+  user_id         String
+  type            CommissionType
+  default_percent Decimal                 @db.Decimal(5, 2)
+  active          Boolean                 @default(true)
+  created_at      DateTime                @default(now())
+  updated_at      DateTime                @updatedAt
+  user            User                    @relation(fields: [user_id], references: [id])
+  category_rules  CommissionCategoryRule[]
+  tiers           CommissionTier[]
+
+  @@index([user_id])
+  @@map("commission_rules")
+}
+
+model CommissionCategoryRule {
+  id                 String         @id @default(cuid())
+  commission_rule_id String
+  category_id        String
+  percent            Decimal        @db.Decimal(5, 2)
+  commission_rule    CommissionRule @relation(fields: [commission_rule_id], references: [id], onDelete: Cascade)
+  category           Category      @relation(fields: [category_id], references: [id])
+
+  @@unique([commission_rule_id, category_id])
+  @@map("commission_category_rules")
+}
+
+model CommissionTier {
+  id                 String         @id @default(cuid())
+  commission_rule_id String
+  min_revenue        Decimal        @db.Decimal(10, 2)
+  max_revenue        Decimal?       @db.Decimal(10, 2)
+  percent            Decimal        @db.Decimal(5, 2)
+  commission_rule    CommissionRule @relation(fields: [commission_rule_id], references: [id], onDelete: Cascade)
+
+  @@index([commission_rule_id])
+  @@map("commission_tiers")
+}
+
+model SalesGoal {
+  id         String   @id @default(cuid())
+  user_id    String
+  period     String   // "DAILY", "WEEKLY", "MONTHLY"
+  target     Decimal  @db.Decimal(10, 2)
+  start_date DateTime
+  end_date   DateTime
+  created_at DateTime @default(now())
+  user       User     @relation(fields: [user_id], references: [id])
+
+  @@index([user_id, start_date, end_date])
+  @@map("sales_goals")
+}
+
+// ─── Fiscal Queue & Events (F1) ─────────────────────────────────────────────
+
+model FiscalQueue {
+  id         String   @id @default(cuid())
+  sale_id    String   @unique
+  payload    String   // JSON do NfcePayload
+  attempts   Int      @default(0)
+  last_error String?
+  status     String   @default("PENDING") // PENDING, PROCESSING, SENT, FAILED
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  sale       Sale     @relation(fields: [sale_id], references: [id])
+
+  @@index([status])
+  @@map("fiscal_queue")
+}
+
+model FiscalEvent {
+  id         String   @id @default(cuid())
+  sale_id    String
+  event_type String   // "transmitted", "authorized", "error", "cancelled", "retry"
+  payload    String?  // JSON de contexto
+  created_at DateTime @default(now())
+  sale       Sale     @relation(fields: [sale_id], references: [id])
+
+  @@index([sale_id])
+  @@index([created_at])
+  @@map("fiscal_events")
+}
+
+model FiscalSequence {
+  id          String @id @default(cuid())
+  series      Int    @default(1)
+  last_number Int    @default(0)
+
+  @@unique([series])
+  @@map("fiscal_sequences")
+}
+
+// ─── Exchanges / Returns (F2) ───────────────────────────────────────────────
+
+model Exchange {
+  id               String             @id @default(cuid())
+  original_sale_id String
+  status           ExchangeStatus     @default(PENDING)
+  reason           ExchangeReason
+  reason_detail    String?
+  total_returned   Decimal            @db.Decimal(10, 2)
+  credit_generated Decimal?           @db.Decimal(10, 2)
+  voucher_id       String?
+  refund_method    String?            // "VOUCHER", "CASH", "ORIGINAL_METHOD"
+  processed_by     String?
+  nfce_return_key  String?
+  created_at       DateTime           @default(now())
+  updated_at       DateTime           @updatedAt
+  original_sale    Sale               @relation(fields: [original_sale_id], references: [id])
+  voucher          Voucher?           @relation(fields: [voucher_id], references: [id])
+  items            ExchangeItem[]
+  processor        User?              @relation(fields: [processed_by], references: [id])
+
+  @@index([original_sale_id])
+  @@index([status])
+  @@map("exchanges")
+}
+
+model ExchangeItem {
+  id               String             @id @default(cuid())
+  exchange_id      String
+  original_item_id String
+  action           ExchangeItemAction
+  quantity         Int
+  unit_price       Decimal            @db.Decimal(10, 2)
+  exchange         Exchange           @relation(fields: [exchange_id], references: [id], onDelete: Cascade)
+  original_item    SaleItem           @relation(fields: [original_item_id], references: [id])
+
+  @@index([exchange_id])
+  @@map("exchange_items")
+}
+
+// ─── Vouchers / Gift Cards (F3) ─────────────────────────────────────────────
+
+model Voucher {
+  id             String        @id @default(cuid())
+  code           String        @unique
+  type           VoucherType
+  original_value Decimal       @db.Decimal(10, 2)
+  balance        Decimal       @db.Decimal(10, 2)
+  status         VoucherStatus @default(ACTIVE)
+  customer_id    String?
+  expires_at     DateTime
+  created_at     DateTime      @default(now())
+  updated_at     DateTime      @updatedAt
+  customer       Customer?     @relation(fields: [customer_id], references: [id])
+  exchanges      Exchange[]
+  usages         VoucherUsage[]
+
+  @@index([code])
+  @@index([customer_id])
+  @@index([status, expires_at])
+  @@map("vouchers")
+}
+
+model VoucherUsage {
+  id         String   @id @default(cuid())
+  voucher_id String
+  sale_id    String
+  amount     Decimal  @db.Decimal(10, 2)
+  created_at DateTime @default(now())
+  voucher    Voucher  @relation(fields: [voucher_id], references: [id])
+  sale       Sale     @relation(fields: [sale_id], references: [id])
+
+  @@index([voucher_id])
+  @@index([sale_id])
+  @@map("voucher_usages")
 }

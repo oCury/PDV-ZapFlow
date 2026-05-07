@@ -42,6 +42,9 @@ export async function GET(req: Request) {
       category_id: true,
       has_variants: true,
       image_url: true,
+      ncm: true,
+      cfop: true,
+      fiscal_unit: true,
       variants: includeVariants
         ? {
             where: { active: true },
@@ -89,7 +92,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { name, barcode, cost_price, sell_price, stock_quantity, min_stock, category, category_id, image_url } = body;
+    const { name, barcode, cost_price, sell_price, stock_quantity, min_stock, category, category_id, image_url, ncm, cfop, fiscal_unit } = body;
 
     if (!name || !barcode || sell_price == null || !category) {
       return NextResponse.json(
@@ -117,6 +120,9 @@ export async function POST(req: Request) {
         category,
         category_id: category_id || null,
         image_url: image_url || null,
+        ncm: ncm || null,
+        cfop: cfop || null,
+        fiscal_unit: fiscal_unit || null,
       },
     });
 

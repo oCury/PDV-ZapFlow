@@ -76,7 +76,7 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@adegailha.com"
+              placeholder="e-mail"
               required
               className="w-full px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-pure-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/40 focus:border-brand-green transition-all"
             />

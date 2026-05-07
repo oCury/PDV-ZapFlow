@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect, Suspense } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   ShoppingCart,
@@ -36,6 +36,11 @@ function PdvContent() {
   const [isCashRegisterOpen, setIsCashRegisterOpen] = useState(false);
   const [manualBarcode, setManualBarcode] = useState("");
   const manualInputRef = useRef<HTMLInputElement>(null);
+  const scanTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => { if (scanTimerRef.current) clearTimeout(scanTimerRef.current); };
+  }, []);
   const [tableOrder, setTableOrder] = useState<{
     tableId: string;
     tableNumber: number;
@@ -68,9 +73,9 @@ function PdvContent() {
 
   const { products, loading, error, refetch } = useProducts();
 
-  const total = cart.reduce(
-    (sum, item) => sum + item.quantity * item.unit_price,
-    0
+  const total = useMemo(
+    () => cart.reduce((sum, item) => sum + item.quantity * item.unit_price, 0),
+    [cart]
   );
 
   const addProductToCart = useCallback(
@@ -130,7 +135,8 @@ function PdvContent() {
       });
 
       setScanStatus(`✓ ${displayName} adicionado`);
-      setTimeout(() => setScanStatus(null), 2000);
+      if (scanTimerRef.current) clearTimeout(scanTimerRef.current);
+      scanTimerRef.current = setTimeout(() => setScanStatus(null), 2000);
     },
     []
   );
@@ -142,7 +148,8 @@ function PdvContent() {
       if (product.stock_quantity <= 0) return;
       addProductToCart(product);
       setScanStatus(`✓ ${product.name} adicionado`);
-      setTimeout(() => setScanStatus(null), 2000);
+      if (scanTimerRef.current) clearTimeout(scanTimerRef.current);
+      scanTimerRef.current = setTimeout(() => setScanStatus(null), 2000);
     },
     [addProductToCart]
   );
@@ -178,7 +185,8 @@ function PdvContent() {
         setScanStatus("Erro de conexão ao buscar produto");
       } finally {
         setIsSearching(false);
-        setTimeout(() => setScanStatus(null), 3000);
+        if (scanTimerRef.current) clearTimeout(scanTimerRef.current);
+        scanTimerRef.current = setTimeout(() => setScanStatus(null), 3000);
       }
     },
     [addProductToCart]
@@ -265,6 +273,8 @@ function PdvContent() {
       setIsOpeningOrder(false);
     }
   }, [tableOrder, tableId, cart]);
+
+  const handleAddNewProduct = useCallback(() => setIsProductModalOpen(true), []);
 
   const handlePaymentSuccess = useCallback(() => {
     setCart([]);
@@ -367,7 +377,7 @@ function PdvContent() {
             error={error}
             onProductClick={handleProductClick}
             onVariantClick={addVariantToCart}
-            onAddNewProduct={() => setIsProductModalOpen(true)}
+            onAddNewProduct={handleAddNewProduct}
           />
         </div>
       </div>

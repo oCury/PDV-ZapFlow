@@ -10,7 +10,13 @@
       "Bash(taskkill //F //IM node.exe)",
       "Bash(npm install:*)",
       "Bash(ls \"C:/Projetos/PDV/PDV-ZapFlow/\"*.env*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npx:*)",
+      "Bash(open:*)",
+      "Bash(vercel --version)",
+      "Bash(vercel deploy:*)",
+      "Bash(mkdir -p /tmp/pdv-apresentacao)",
+      "Bash(cp /Users/andrecury/Projetos/PDV/PDV-ZapFlow/docs/apresentacao-comercial.html /tmp/pdv-apresentacao/index.html)"
     ]
   }
 }

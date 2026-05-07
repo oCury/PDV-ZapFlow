@@ -3,7 +3,14 @@ import { cookies } from "next/headers";
 import { prisma } from "./prisma";
 
 const SESSION_COOKIE = "zf_session";
-const SECRET = process.env.SESSION_SECRET || "zap-flow-dev-secret-change-in-production";
+
+function getSecret(): string {
+  const s = process.env.SESSION_SECRET;
+  if (!s) throw new Error("SESSION_SECRET environment variable is required. Set it in .env");
+  return s;
+}
+
+const SECRET = getSecret();
 
 export function hashPassword(password: string): string {
   const salt = randomBytes(16).toString("hex");
@@ -40,7 +47,9 @@ export function parseSessionToken(token: string): SessionPayload | null {
   const parts = token.split(".");
   if (parts.length !== 2) return null;
   const [payload, signature] = parts;
-  if (sign(payload) !== signature) return null;
+  const expected = Buffer.from(sign(payload), "hex");
+  const actual = Buffer.from(signature, "hex");
+  if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return null;
   try {
     return JSON.parse(Buffer.from(payload, "base64url").toString());
   } catch {

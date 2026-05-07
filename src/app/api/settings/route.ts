@@ -7,6 +7,10 @@ import { getAllSettings, setSetting } from "@/lib/settings";
  */
 export async function GET() {
   try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
     const settings = await getAllSettings();
     return NextResponse.json({ success: true, settings });
   } catch (error) {
@@ -25,8 +29,8 @@ export async function GET() {
 export async function PUT(request: NextRequest) {
   try {
     const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    if (!session || session.role !== "ADMIN") {
+      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
     }
 
     const body = await request.json();

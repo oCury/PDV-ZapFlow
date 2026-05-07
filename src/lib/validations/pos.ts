@@ -24,10 +24,21 @@ export const saleItemPayloadSchema = z.object({
 
 // ─── Payments ────────────────────────────────────────────────────────────────
 
-export const paymentSplitSchema = z.object({
-  paymentMethod: z.enum(["CASH", "CARD", "PIX", "LOYALTY"]),
-  amount: z.number().positive(),
-});
+export const paymentSplitSchema = z
+  .object({
+    paymentMethod: z.enum(["CASH", "CARD", "PIX", "LOYALTY", "VOUCHER"]),
+    amount: z.number().positive(),
+    voucherCode: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.paymentMethod === "VOUCHER") {
+        return !!data.voucherCode && data.voucherCode.length > 0;
+      }
+      return true;
+    },
+    { message: "Código do vale é obrigatório para pagamento com VOUCHER", path: ["voucherCode"] }
+  );
 
 // ─── Sale ────────────────────────────────────────────────────────────────────
 
@@ -36,7 +47,8 @@ export const createSaleSchema = z
     totalAmount: z.number().positive(),
     items: z.array(saleItemPayloadSchema).min(1),
     payments: z.array(paymentSplitSchema).optional(),
-    paymentMethod: z.enum(["CASH", "CARD", "PIX", "LOYALTY"]).optional(),
+    paymentMethod: z.enum(["CASH", "CARD", "PIX", "LOYALTY", "VOUCHER"]).optional(),
+    sellerId: z.string().optional(),
     customerId: z.string().optional(),
     customerPhone: z.string().optional(),
     tableId: z.string().optional(),

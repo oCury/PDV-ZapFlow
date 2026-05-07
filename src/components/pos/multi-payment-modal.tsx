@@ -13,11 +13,13 @@ import {
   Trash2,
   Printer,
   X,
+  Ticket,
 } from "lucide-react";
 import type { CartItem } from "@/lib/validations/pos";
 import type { PaymentSplit } from "@/lib/validations/pos";
 import { NumericKeypad } from "./numeric-keypad";
 import { ReceiptPrint } from "./receipt-print";
+import { VoucherPaymentInput } from "./voucher-payment-input";
 
 interface SelectedCustomer {
   id: string;
@@ -34,8 +36,12 @@ interface MultiPaymentModalProps {
   selectedCustomer?: SelectedCustomer | null;
 }
 
-type PaymentMethod = "CASH" | "CARD" | "PIX";
+type PaymentMethod = "CASH" | "CARD" | "PIX" | "VOUCHER";
 type PaymentStatus = "IDLE" | "PROCESSING" | "SUCCESS" | "FAILED";
+
+interface PaymentWithVoucher extends PaymentSplit {
+  voucherCode?: string;
+}
 
 const DEVICE_ID = process.env.NEXT_PUBLIC_MERCADOPAGO_DEVICE_ID || "";
 
@@ -43,6 +49,7 @@ const PAYMENT_METHODS: { key: PaymentMethod; icon: typeof Banknote; label: strin
   { key: "CASH", icon: Banknote, label: "Dinheiro" },
   { key: "CARD", icon: CreditCard, label: "Cartão" },
   { key: "PIX", icon: QrCode, label: "PIX" },
+  { key: "VOUCHER", icon: Ticket, label: "Vale" },
 ];
 
 function buildItemsPayload(cartItems: CartItem[]) {
@@ -65,7 +72,7 @@ export function MultiPaymentModal({
   selectedCustomer,
 }: MultiPaymentModalProps) {
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("IDLE");
-  const [payments, setPayments] = useState<PaymentSplit[]>([]);
+  const [payments, setPayments] = useState<PaymentWithVoucher[]>([]);
   const [amountReceived, setAmountReceived] = useState("");
   const [change, setChange] = useState(0);
   const [intentId, setIntentId] = useState<string | null>(null);
@@ -123,9 +130,13 @@ export function MultiPaymentModal({
     }
   }, [paymentStatus, saleId]);
 
-  const addPayment = (method: PaymentMethod, amount: number) => {
+  const addPayment = (method: PaymentMethod, amount: number, voucherCode?: string) => {
     if (amount <= 0) return;
-    setPayments((prev) => [...prev, { paymentMethod: method, amount }]);
+    const entry: PaymentWithVoucher = { paymentMethod: method, amount };
+    if (voucherCode) {
+      entry.voucherCode = voucherCode;
+    }
+    setPayments((prev) => [...prev, entry]);
     if (method === "CASH") {
       setAmountReceived(amount.toString());
       // Calculate change for cash payments
@@ -326,6 +337,11 @@ export function MultiPaymentModal({
                       })()}
                     <span className="text-white font-medium">
                       {PAYMENT_METHODS.find((m) => m.key === p.paymentMethod)?.label}
+                      {p.voucherCode && (
+                        <span className="ml-1 text-xs text-slate-400 font-mono">
+                          ({p.voucherCode})
+                        </span>
+                      )}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -362,19 +378,25 @@ export function MultiPaymentModal({
                       </button>
                     ))}
                   </div>
-                  {addPaymentMethod && (
-                    <>
-                      <NumericKeypad
-                        value={addPaymentAmount}
-                        onChange={setAddPaymentAmount}
-                        onConfirm={() => {
-                          const amt = parseFloat(addPaymentAmount);
-                          if (!isNaN(amt) && amt > 0) {
-                            addPayment(addPaymentMethod, amt);
-                          }
-                        }}
-                      />
-                    </>
+                  {addPaymentMethod && addPaymentMethod !== "VOUCHER" && (
+                    <NumericKeypad
+                      value={addPaymentAmount}
+                      onChange={setAddPaymentAmount}
+                      onConfirm={() => {
+                        const amt = parseFloat(addPaymentAmount);
+                        if (!isNaN(amt) && amt > 0) {
+                          addPayment(addPaymentMethod, amt);
+                        }
+                      }}
+                    />
+                  )}
+                  {addPaymentMethod === "VOUCHER" && (
+                    <VoucherPaymentInput
+                      maxAmount={remaining > 0 ? remaining : totalAmount}
+                      onVoucherConfirm={(voucherCode, amount) => {
+                        addPayment("VOUCHER", amount, voucherCode);
+                      }}
+                    />
                   )}
                 </div>
               )}

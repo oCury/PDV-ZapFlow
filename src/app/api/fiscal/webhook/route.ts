@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { FiscalService } from "@/lib/fiscal/FiscalService";
 import type { FiscalWebhookEvent } from "@/lib/fiscal/types";
 
 /**
@@ -15,12 +16,9 @@ import type { FiscalWebhookEvent } from "@/lib/fiscal/types";
  *  - nfce.cancelled   → mark as cancelled
  */
 export async function POST(req: Request) {
-  // ── Signature / secret verification ────────────────────────────────────────
+  // ── Signature / secret verification (mandatory) ────────────────────────────
   const secret = req.headers.get("x-webhook-secret");
-  if (
-    process.env.FISCAL_WEBHOOK_SECRET &&
-    secret !== process.env.FISCAL_WEBHOOK_SECRET
-  ) {
+  if (!process.env.FISCAL_WEBHOOK_SECRET || secret !== process.env.FISCAL_WEBHOOK_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -35,36 +33,81 @@ export async function POST(req: Request) {
 
   switch (event.event) {
     case "nfce.authorized": {
-      // TODO: add nfce_access_key, nfce_qr_url, nfce_danfe_url columns to
-      // the Sale model to persist these values per-sale.
-      console.info(
-        `[Fiscal] NFC-e authorized for sale ${referenceId}. Key: ${accessKey}`
-      );
+      await prisma.sale
+        .update({
+          where: { id: referenceId },
+          data: {
+            nfce_status: "authorized",
+            nfce_access_key: accessKey ?? null,
+            nfce_qr_url: qrCodeUrl ?? null,
+            nfce_danfe_url: danfeUrl ?? null,
+            nfce_protocol: (event as unknown as Record<string, unknown>).protocol as string ?? null,
+          },
+        })
+        .catch((err) => {
+          console.error(
+            `[Fiscal] Failed to update sale ${referenceId}:`,
+            err
+          );
+        });
 
-      // Placeholder: update sale notes until the fiscal columns are added
-      await prisma.sale.update({
-        where: { id: referenceId },
-        data: {
-          notes: `NFC-e: ${accessKey}`,
-        },
-      }).catch((err) => {
-        console.error(`[Fiscal] Failed to update sale ${referenceId}:`, err);
+      await FiscalService.logEvent(referenceId, "authorized", {
+        accessKey,
+        qrCodeUrl,
+        danfeUrl,
       });
+
+      // Mark queue item as SENT if it exists
+      await prisma.fiscalQueue
+        .updateMany({
+          where: { sale_id: referenceId, status: { not: "SENT" } },
+          data: { status: "SENT" },
+        })
+        .catch(() => {
+          // Queue item may not exist — that's fine
+        });
 
       break;
     }
 
     case "nfce.error": {
-      console.error(
-        `[Fiscal] NFC-e error for sale ${referenceId}:`,
-        errors
-      );
-      // TODO: create a fiscal_events table to log errors for operator review
+      const errorsJson = errors ? JSON.stringify(errors) : null;
+
+      await prisma.sale
+        .update({
+          where: { id: referenceId },
+          data: {
+            nfce_status: "error",
+            nfce_errors: errorsJson,
+          },
+        })
+        .catch((err) => {
+          console.error(
+            `[Fiscal] Failed to update sale ${referenceId}:`,
+            err
+          );
+        });
+
+      await FiscalService.logEvent(referenceId, "error", { errors });
+
       break;
     }
 
     case "nfce.cancelled": {
-      console.info(`[Fiscal] NFC-e cancelled for sale ${referenceId}`);
+      await prisma.sale
+        .update({
+          where: { id: referenceId },
+          data: { nfce_status: "cancelled" },
+        })
+        .catch((err) => {
+          console.error(
+            `[Fiscal] Failed to update sale ${referenceId}:`,
+            err
+          );
+        });
+
+      await FiscalService.logEvent(referenceId, "cancelled", {});
+
       break;
     }
 

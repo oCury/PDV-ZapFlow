@@ -40,10 +40,10 @@ export async function POST(req: Request) {
     return NextResponse.json({
       user: { id: user.id, name: user.name, role: user.role },
     });
-  } catch (error: any) {
-    console.error("ERRO DETALHADO:", error); // Isso aparecerá nos logs da Vercel
+  } catch (error: unknown) {
+    console.error("[Auth Login] Internal error:", error instanceof Error ? error.message : error);
     return NextResponse.json(
-      { error: "Erro interno: " + error.message },
+      { error: "Erro interno ao processar login." },
       { status: 500 }
     );
   }

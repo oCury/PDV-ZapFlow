@@ -9,18 +9,23 @@ export async function POST(req: Request) {
     const xSignature = req.headers.get("x-signature");
     const xRequestId = req.headers.get("x-request-id");
 
-    if (xSignature && xRequestId) {
-      const isValid = validateWebhookSignature(
-        xSignature,
-        xRequestId,
-        String(body.data?.id)
+    if (!xSignature || !xRequestId) {
+      return NextResponse.json(
+        { error: "Missing signature headers" },
+        { status: 401 }
       );
-      if (!isValid) {
-        return NextResponse.json(
-          { error: "Invalid signature" },
-          { status: 401 }
-        );
-      }
+    }
+
+    const isValid = validateWebhookSignature(
+      xSignature,
+      xRequestId,
+      String(body.data?.id)
+    );
+    if (!isValid) {
+      return NextResponse.json(
+        { error: "Invalid signature" },
+        { status: 401 }
+      );
     }
 
     if (body.type !== "payment") {

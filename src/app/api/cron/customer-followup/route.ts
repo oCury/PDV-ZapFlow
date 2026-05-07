@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processFollowups, getFollowupStats } from "@/lib/followup/followup-service";
+import { getSession } from "@/lib/auth";
 
 /**
  * Vercel Cron Job - Customer Follow-up
@@ -19,21 +20,16 @@ import { processFollowups, getFollowupStats } from "@/lib/followup/followup-serv
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const isTest = searchParams.get("test") === "true";
     const dryRun = searchParams.get("dryRun") === "true";
     const daysAgoParam = searchParams.get("daysAgo");
     const daysAgo = daysAgoParam ? parseInt(daysAgoParam, 10) : undefined;
 
     // Verify cron secret (Vercel sets this automatically)
-    // Skip verification in test mode for local development
-    if (!isTest) {
-      const authHeader = request.headers.get("authorization");
-      const cronSecret = process.env.CRON_SECRET;
+    const authHeader = request.headers.get("authorization");
+    const cronSecret = process.env.CRON_SECRET;
 
-      if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-        console.log("[Cron Followup] Unauthorized access attempt");
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
+    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     console.log(`[Cron Followup] Starting... (daysAgo: ${daysAgo}, dryRun: ${dryRun})`);
@@ -57,7 +53,7 @@ export async function GET(request: NextRequest) {
         skipped: result.skipped,
         totalCashbackGiven: result.totalCashbackGiven,
       },
-      results: dryRun || isTest ? result.results : undefined,
+      results: dryRun ? result.results : undefined,
     });
   } catch (error) {
     console.error("[Cron Followup] Error:", error);
@@ -76,9 +72,11 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    // This endpoint should be protected by session auth
-    // For now, we'll allow it for admin panel usage
-    
+    const session = await getSession();
+    if (!session || session.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json().catch(() => ({}));
     const dryRun = body.dryRun === true;
     const daysAgo = body.daysAgo ? parseInt(body.daysAgo, 10) : undefined;
