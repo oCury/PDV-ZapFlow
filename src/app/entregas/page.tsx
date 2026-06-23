@@ -15,6 +15,8 @@ import {
   Pencil,
   Send,
   Plus,
+  ExternalLink,
+  Copy,
 } from "lucide-react";
 
 type DeliveryStatus =
@@ -102,6 +104,16 @@ function formatPhone(phone: string | null) {
 
 function refOf(r: { saleId: string | null; deliveryId: string | null }): string {
   return r.saleId ?? r.deliveryId ?? "";
+}
+
+/** Uber deep link: pickup = operator's location (the store), dropoff = delivery address. */
+function uberLink(address: string): string {
+  return `https://m.uber.com/ul/?action=setPickup&pickup=my_location&dropoff%5Bformatted_address%5D=${encodeURIComponent(address)}`;
+}
+
+/** Google Maps link for the destination (universal fallback / navigation). */
+function mapsLink(address: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 }
 
 function buildMessage(status: DeliveryStatus, name: string | null) {
@@ -503,6 +515,8 @@ function DeliveryCard({
         </p>
       )}
 
+      {row.address && <CourierHandoff address={row.address} />}
+
       <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-700/60 mt-1">
         {next.map((s) => (
           <button
@@ -531,6 +545,40 @@ function DeliveryCard({
           Detalhes
         </button>
       </div>
+    </div>
+  );
+}
+
+function CourierHandoff({ address }: { address: string }) {
+  const [copied, setCopied] = useState(false);
+  const copyAddress = async () => {
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // clipboard may be unavailable
+    }
+  };
+  const btn =
+    "inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors";
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-[11px] text-slate-500">Chamar entregador:</span>
+      <a href={uberLink(address)} target="_blank" rel="noopener noreferrer" className={btn}>
+        <ExternalLink size={11} /> Uber
+      </a>
+      <button
+        type="button"
+        onClick={copyAddress}
+        className={btn}
+        title="Copiar endereço para colar no app 99"
+      >
+        <Copy size={11} /> {copied ? "Copiado!" : "99"}
+      </button>
+      <a href={mapsLink(address)} target="_blank" rel="noopener noreferrer" className={btn}>
+        <ExternalLink size={11} /> Maps
+      </a>
     </div>
   );
 }
