@@ -22,11 +22,8 @@ export async function GET(request: NextRequest) {
     }
 
     const config = evolutionAPI.getConfig();
-    console.log("[WhatsApp Connect] Requesting QR Code for instance:", instanceName);
 
     const result = await evolutionAPI.getQRCode(instanceName);
-
-    console.log("[WhatsApp Connect] Result:", JSON.stringify(result, null, 2));
 
     if (!result.success) {
       return NextResponse.json(
@@ -53,7 +50,6 @@ export async function GET(request: NextRequest) {
       message: "Escaneie o QR Code com seu WhatsApp",
     });
   } catch (error) {
-    console.error("[WhatsApp Connect] Error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erro desconhecido" },
       { status: 500 }

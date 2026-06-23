@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { X, Loader2 } from "lucide-react";
+import { X, Loader2, CheckCircle } from "lucide-react";
 import { VariantGridManager } from "./variant-grid-manager";
 
 export interface ProductFormData {
@@ -67,6 +67,7 @@ export function ProductModal({
 }: ProductModalProps) {
   const [form, setForm] = useState<ProductFormData>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [parentCatId, setParentCatId] = useState<string>("");
@@ -104,6 +105,7 @@ export function ProductModal({
     if (isOpen) {
       setForm(editProduct ?? EMPTY_FORM);
       setError(null);
+      setSaved(false);
       setVariants([]);
       setParentCatId("");
       parentInitialized.current = false;
@@ -190,8 +192,9 @@ export function ProductModal({
         return;
       }
 
+      setSaved(true);
       onSaved();
-      onClose();
+      setTimeout(onClose, 500);
     } catch {
       setError("Erro de conexão ao salvar produto.");
     } finally {
@@ -242,6 +245,13 @@ export function ProductModal({
           {error && (
             <div className="bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 text-sm font-medium px-4 py-3 rounded-xl">
               {error}
+            </div>
+          )}
+
+          {saved && (
+            <div className="flex items-center gap-2 bg-brand-green/10 text-brand-green text-sm font-medium px-4 py-3 rounded-xl border border-brand-green/30">
+              <CheckCircle size={16} />
+              Produto salvo com sucesso!
             </div>
           )}
 
@@ -462,11 +472,16 @@ export function ProductModal({
             </button>
             <button
               type="submit"
-              disabled={saving}
-              className="flex-1 bg-brand-green hover:bg-brand-green-hover disabled:bg-gray-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed text-primary-dark font-bold py-3 rounded-2xl transition-colors duration-200 text-sm flex items-center justify-center gap-2"
+              disabled={saving || saved}
+              className={`flex-1 font-bold py-3 rounded-2xl transition-colors duration-200 text-sm flex items-center justify-center gap-2 disabled:cursor-not-allowed ${
+                saved
+                  ? "bg-brand-green text-primary-dark"
+                  : "bg-brand-green hover:bg-brand-green-hover disabled:bg-gray-300 dark:disabled:bg-slate-700 text-primary-dark"
+              }`}
             >
               {saving && <Loader2 size={16} className="animate-spin" />}
-              {isEditing ? "Salvar Alterações" : "Salvar Produto"}
+              {saved && <CheckCircle size={16} />}
+              {saved ? "Salvo!" : isEditing ? "Salvar Alterações" : "Salvar Produto"}
             </button>
           </div>
         </form>

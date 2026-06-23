@@ -9,6 +9,7 @@ import {
   X,
   UserCheck,
   SkipForward,
+  AlertCircle,
 } from "lucide-react";
 
 interface CustomerData {
@@ -38,6 +39,7 @@ export function CustomerIdentificationModal({
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const reset = () => {
     setQuery("");
@@ -49,6 +51,7 @@ export function CustomerIdentificationModal({
     setNewName("");
     setNewPhone("");
     setCreating(false);
+    setError(null);
   };
 
   const handleClose = () => {
@@ -65,6 +68,7 @@ export function CustomerIdentificationModal({
     setCustomer(null);
     setSearchResults([]);
     setShowCreateForm(false);
+    setError(null);
 
     try {
       const res = await fetch(`/api/customers/search?q=${encodeURIComponent(trimmed)}`);
@@ -78,9 +82,11 @@ export function CustomerIdentificationModal({
         }
       } else if (res.status === 404) {
         setNotFound(true);
+      } else {
+        setError("Não foi possível buscar o cliente. Tente novamente.");
       }
     } catch {
-      console.error("Customer search error");
+      setError("Sem conexão com o servidor. Verifique sua internet.");
     } finally {
       setSearching(false);
     }
@@ -110,6 +116,7 @@ export function CustomerIdentificationModal({
     if (phoneNormalized.length < 10) return;
 
     setCreating(true);
+    setError(null);
     try {
       const res = await fetch("/api/customers/search", {
         method: "POST",
@@ -126,9 +133,12 @@ export function CustomerIdentificationModal({
         setNotFound(false);
         setShowCreateForm(false);
         setSearchResults([]);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Não foi possível cadastrar o cliente. Tente novamente.");
       }
     } catch {
-      console.error("Customer create error");
+      setError("Sem conexão com o servidor. Verifique sua internet.");
     } finally {
       setCreating(false);
     }
@@ -190,6 +200,7 @@ export function CustomerIdentificationModal({
                   setCustomer(null);
                   setSearchResults([]);
                   setShowCreateForm(false);
+                  setError(null);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") searchCustomer();
@@ -212,6 +223,14 @@ export function CustomerIdentificationModal({
               </button>
             </div>
           </div>
+
+          {/* Error message */}
+          {error && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-sm text-red-400">
+              <AlertCircle size={18} className="shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
           {/* Multiple Results List */}
           {searchResults.length > 0 && !customer && (

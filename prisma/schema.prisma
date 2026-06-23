@@ -168,6 +168,15 @@ enum SaleStatus {
   CANCELLED // M5: cancelled order
 }
 
+enum DeliveryStatus {
+  PENDING     // aguardando preparo
+  READY       // pronto para envio
+  DISPATCHED  // saiu para entrega
+  DELIVERED   // entregue
+  FAILED      // tentativa falhou
+  CANCELLED   // cancelada
+}
+
 // ─── Customer (CRM) ─────────────────────────────────────────────────────────
 
 model Customer {
@@ -242,6 +251,7 @@ model Sale {
   table            Table?            @relation(fields: [table_id], references: [id]) // M5
   seller           User?             @relation("SellerSales", fields: [seller_id], references: [id])
   followup         CustomerFollowup?
+  delivery         Delivery?
   fiscal_queue     FiscalQueue?
   fiscal_events    FiscalEvent[]
   exchanges        Exchange[]
@@ -509,4 +519,34 @@ model VoucherUsage {
   @@index([voucher_id])
   @@index([sale_id])
   @@map("voucher_usages")
+}
+
+// ─── Delivery (Entregas) ──────────────────────────────────────────────────────
+
+model Delivery {
+  id              String         @id @default(cuid())
+  sale_id         String         @unique // 1:1 with Sale
+  status          DeliveryStatus @default(PENDING)
+  carrier         String         @default("MANUAL") // MANUAL | MOTOBOY | CORREIOS | TRANSPORTADORA | NINETYNINE
+  external_id     String? // carrier ride/shipment id (e.g. 99 ride id)
+  tracking_code   String?
+  tracking_url    String?
+  recipient_name  String? // snapshot, independent of later customer edits
+  recipient_phone String?
+  address         String?
+  cep             String?
+  fee             Decimal?       @db.Decimal(10, 2) // seeded from sale.shipping_cost
+  driver_name     String? // for motoboy / 99
+  driver_phone    String?
+  notes           String?
+  dispatched_at   DateTime?
+  delivered_at    DateTime?
+  created_at      DateTime       @default(now())
+  updated_at      DateTime       @updatedAt
+
+  sale Sale @relation(fields: [sale_id], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([carrier])
+  @@map("deliveries")
 }

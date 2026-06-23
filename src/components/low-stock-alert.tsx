@@ -57,7 +57,7 @@ export function LowStockAlert() {
         setVisible(true);
       }
     } catch {
-      // Silent fail
+      // intentionally ignored — widget is non-critical
     }
   }, []);
 

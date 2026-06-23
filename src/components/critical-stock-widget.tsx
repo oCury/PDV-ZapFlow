@@ -23,7 +23,7 @@ export function CriticalStockWidget() {
       const res = await fetch("/api/products/low-stock");
       if (res.ok) setProducts(await res.json());
     } catch {
-      /* silent — widget is non-critical */
+      // intentionally ignored — widget is non-critical
     } finally {
       setLoading(false);
     }

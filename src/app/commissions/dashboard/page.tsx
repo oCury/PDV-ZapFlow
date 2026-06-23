@@ -73,7 +73,7 @@ export default function CommissionDashboardPage() {
       const res = await fetch("/api/commissions/dashboard");
       if (res.ok) setData(await res.json());
     } catch {
-      /* ignore */
+      // intentionally ignored
     } finally {
       setLoading(false);
     }
