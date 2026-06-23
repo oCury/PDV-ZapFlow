@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI } from "@google/genai";
 import { getSession } from "@/lib/auth";
 
 const SYSTEM_PROMPT = `Você é o assistente de suporte do PDV-ZapFlow, um sistema de Ponto de Venda voltado para o varejo de moda brasileiro.
@@ -8,6 +8,7 @@ O PDV-ZapFlow oferece:
 - **Catálogo de produtos**: produtos simples e com grade de variantes (tamanho/cor), importação de catálogo
 - **PDV (Ponto de Venda)**: vendas presenciais com busca por nome, código de barras ou SKU, seletor de variantes
 - **Pagamentos**: PIX, cartão (Mercado Pago Point Smart), dinheiro, voucher/vale e pagamentos mistos
+- **Entregas**: gestão de entregas (motoboy, Correios, transportadora), criação manual ou a partir da venda, aviso ao cliente via WhatsApp
 - **Fiscal**: emissão de NFC-e (Nota Fiscal de Consumidor Eletrônica) via FocusNFe/PlugNotas
 - **Clientes e fidelidade**: cadastro de clientes, programa de cashback por pontos
 - **Follow-up via WhatsApp**: mensagens automáticas pós-venda via Evolution API
@@ -46,7 +47,7 @@ interface ChatRequest {
 
 const MAX_MESSAGES = 10;
 const MAX_MESSAGE_CHARS = 4000;
-const MODEL = "claude-haiku-4-5-20251001";
+const MODEL = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
 
 // Best-effort in-memory rate limiter (per user, per process). On serverless
 // this is per-instance, not global — it caps abuse from a single warm instance
@@ -89,9 +90,9 @@ export async function POST(req: Request) {
     );
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return jsonError("ANTHROPIC_API_KEY não configurada", 500);
+    return jsonError("GEMINI_API_KEY não configurada", 500);
   }
 
   let body: ChatRequest;
@@ -108,40 +109,39 @@ export async function POST(req: Request) {
   }
 
   // 3. Input hygiene: cap message count and per-message length to bound token usage.
-  const safeMessages = messages
+  //    Gemini uses roles "user" and "model" (assistant -> model).
+  const contents = messages
     .slice(-MAX_MESSAGES)
     .filter((m) => m && (m.role === "user" || m.role === "assistant"))
     .map((m) => ({
-      role: m.role,
-      content: String(m.content ?? "").slice(0, MAX_MESSAGE_CHARS),
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: String(m.content ?? "").slice(0, MAX_MESSAGE_CHARS) }],
     }))
-    .filter((m) => m.content.length > 0);
+    .filter((m) => m.parts[0].text.length > 0);
 
-  if (safeMessages.length === 0) {
+  if (contents.length === 0) {
     return jsonError("Nenhuma mensagem válida fornecida", 400);
   }
 
-  const client = new Anthropic({ apiKey });
+  const ai = new GoogleGenAI({ apiKey });
 
   const encoder = new TextEncoder();
 
   const readable = new ReadableStream({
     async start(controller) {
       try {
-        const stream = client.messages.stream({
+        const stream = await ai.models.generateContentStream({
           model: MODEL,
-          max_tokens: 1024,
-          system: SYSTEM_PROMPT,
-          messages: safeMessages,
+          contents,
+          config: {
+            systemInstruction: SYSTEM_PROMPT,
+            maxOutputTokens: 1024,
+          },
         });
 
-        for await (const event of stream) {
-          if (
-            event.type === "content_block_delta" &&
-            event.delta.type === "text_delta"
-          ) {
-            controller.enqueue(encoder.encode(event.delta.text));
-          }
+        for await (const chunk of stream) {
+          const text = chunk.text;
+          if (text) controller.enqueue(encoder.encode(text));
         }
         controller.close();
       } catch (err) {
