@@ -22,7 +22,10 @@ const patchSchema = z.object({
   notes: z.string().max(1000).nullable().optional(),
 });
 
-/** PATCH /api/deliveries/[saleId] — upsert the delivery state for a sale */
+/**
+ * PATCH /api/deliveries/[ref] — upsert delivery state.
+ * `ref` is a Sale id (sale-derived delivery) OR a Delivery id (manual delivery).
+ */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ saleId: string }> }
@@ -33,7 +36,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { saleId } = await params;
+    const { saleId: ref } = await params;
     const body = await request.json().catch(() => null);
     const parsed = patchSchema.safeParse(body);
     if (!parsed.success) {
@@ -44,18 +47,21 @@ export async function PATCH(
     }
     const input = parsed.data;
 
+    // Resolve target: a Sale (sale-derived) or a standalone Delivery (manual).
     const sale = await prisma.sale.findUnique({
-      where: { id: saleId },
+      where: { id: ref },
       include: {
         delivery: true,
         customer: { select: { name: true, phone: true, whatsapp: true } },
       },
     });
-    if (!sale) {
-      return NextResponse.json({ error: "Venda não encontrada" }, { status: 404 });
+    const standalone = sale ? null : await prisma.delivery.findUnique({ where: { id: ref } });
+
+    if (!sale && !standalone) {
+      return NextResponse.json({ error: "Entrega não encontrada" }, { status: 404 });
     }
 
-    const existing = sale.delivery;
+    const existing = sale ? sale.delivery : standalone;
     const currentStatus: DeliveryStatus = existing?.status ?? "PENDING";
 
     if (input.status && !canTransition(currentStatus, input.status)) {
@@ -65,13 +71,8 @@ export async function PATCH(
       );
     }
 
-    // Dispatch through the carrier adapter when moving to DISPATCHED with a
-    // non-manual carrier. Manual deliveries skip this (operator-handled).
-    let dispatchInfo: {
-      externalId?: string;
-      trackingCode?: string;
-      trackingUrl?: string;
-    } = {};
+    // Carrier dispatch when moving to DISPATCHED with a non-manual carrier.
+    let dispatchInfo: { externalId?: string; trackingCode?: string; trackingUrl?: string } = {};
     const effectiveCarrier = (input.carrier ?? existing?.carrier ?? "MANUAL").toUpperCase();
     if (
       input.status === "DISPATCHED" &&
@@ -79,15 +80,15 @@ export async function PATCH(
       effectiveCarrier !== "MANUAL"
     ) {
       const result = await getCarrier(effectiveCarrier).dispatch({
-        saleId,
-        recipientName: input.recipientName ?? existing?.recipient_name ?? sale.customer?.name,
+        saleId: ref,
+        recipientName: input.recipientName ?? existing?.recipient_name ?? sale?.customer?.name,
         recipientPhone:
           input.recipientPhone ??
           existing?.recipient_phone ??
-          sale.customer?.whatsapp ??
-          sale.customer?.phone,
-        address: input.address ?? existing?.address ?? sale.shipping_address,
-        cep: input.cep ?? existing?.cep ?? sale.shipping_cep,
+          sale?.customer?.whatsapp ??
+          sale?.customer?.phone,
+        address: input.address ?? existing?.address ?? sale?.shipping_address,
+        cep: input.cep ?? existing?.cep ?? sale?.shipping_cep,
       });
       if (!result.success) {
         return NextResponse.json(
@@ -98,7 +99,7 @@ export async function PATCH(
       dispatchInfo = result.data ?? {};
     }
 
-    // Only write the fields that were provided, plus lifecycle timestamps.
+    // Fields to write (only those provided) + lifecycle timestamps.
     const writable: Prisma.DeliveryUncheckedUpdateInput = {};
     if (input.status !== undefined) writable.status = input.status;
     if (input.carrier !== undefined) writable.carrier = input.carrier;
@@ -115,36 +116,40 @@ export async function PATCH(
     if (dispatchInfo.externalId) writable.external_id = dispatchInfo.externalId;
     if (dispatchInfo.trackingCode) writable.tracking_code = dispatchInfo.trackingCode;
     if (dispatchInfo.trackingUrl) writable.tracking_url = dispatchInfo.trackingUrl;
-    if (input.status === "DISPATCHED" && !existing?.dispatched_at) {
-      writable.dispatched_at = new Date();
-    }
-    if (input.status === "DELIVERED" && !existing?.delivered_at) {
-      writable.delivered_at = new Date();
-    }
+    if (input.status === "DISPATCHED" && !existing?.dispatched_at) writable.dispatched_at = new Date();
+    if (input.status === "DELIVERED" && !existing?.delivered_at) writable.delivered_at = new Date();
 
-    const delivery = await prisma.delivery.upsert({
-      where: { sale_id: saleId },
-      update: writable,
-      create: {
-        sale_id: saleId,
-        status: input.status ?? "PENDING",
-        carrier: input.carrier ?? "MANUAL",
-        tracking_code: input.trackingCode ?? dispatchInfo.trackingCode ?? null,
-        tracking_url: input.trackingUrl ?? dispatchInfo.trackingUrl ?? null,
-        external_id: dispatchInfo.externalId ?? null,
-        driver_name: input.driverName ?? null,
-        driver_phone: input.driverPhone ?? null,
-        fee: input.fee ?? sale.shipping_cost ?? null,
-        recipient_name: input.recipientName ?? sale.customer?.name ?? null,
-        recipient_phone:
-          input.recipientPhone ?? sale.customer?.whatsapp ?? sale.customer?.phone ?? null,
-        address: input.address ?? sale.shipping_address ?? null,
-        cep: input.cep ?? sale.shipping_cep ?? null,
-        notes: input.notes ?? null,
-        dispatched_at: input.status === "DISPATCHED" ? new Date() : null,
-        delivered_at: input.status === "DELIVERED" ? new Date() : null,
-      },
-    });
+    let delivery;
+    if (sale) {
+      delivery = await prisma.delivery.upsert({
+        where: { sale_id: ref },
+        update: writable,
+        create: {
+          sale_id: ref,
+          status: input.status ?? "PENDING",
+          carrier: input.carrier ?? "MANUAL",
+          tracking_code: input.trackingCode ?? dispatchInfo.trackingCode ?? null,
+          tracking_url: input.trackingUrl ?? dispatchInfo.trackingUrl ?? null,
+          external_id: dispatchInfo.externalId ?? null,
+          driver_name: input.driverName ?? null,
+          driver_phone: input.driverPhone ?? null,
+          fee: input.fee ?? sale.shipping_cost ?? null,
+          recipient_name: input.recipientName ?? sale.customer?.name ?? null,
+          recipient_phone:
+            input.recipientPhone ?? sale.customer?.whatsapp ?? sale.customer?.phone ?? null,
+          address: input.address ?? sale.shipping_address ?? null,
+          cep: input.cep ?? sale.shipping_cep ?? null,
+          notes: input.notes ?? null,
+          dispatched_at: input.status === "DISPATCHED" ? new Date() : null,
+          delivered_at: input.status === "DELIVERED" ? new Date() : null,
+        },
+      });
+    } else {
+      delivery = await prisma.delivery.update({
+        where: { id: ref },
+        data: writable,
+      });
+    }
 
     return NextResponse.json({ delivery });
   } catch (error) {

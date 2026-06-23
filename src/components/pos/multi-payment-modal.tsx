@@ -81,7 +81,19 @@ export function MultiPaymentModal({
   const [showAddPayment, setShowAddPayment] = useState(false);
   const [addPaymentMethod, setAddPaymentMethod] = useState<PaymentMethod | null>(null);
   const [addPaymentAmount, setAddPaymentAmount] = useState("");
+  const [shippingMethod, setShippingMethod] = useState("");
+  const [shippingAddress, setShippingAddress] = useState("");
+  const [shippingCep, setShippingCep] = useState("");
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Shipping fields are only sent when a delivery method is chosen (RETIRADA/none = no delivery).
+  const shippingFields = shippingMethod
+    ? {
+        shippingMethod,
+        shippingAddress: shippingAddress.trim() || undefined,
+        shippingCep: shippingCep.trim() || undefined,
+      }
+    : {};
 
   const paidSoFar = payments.reduce((sum, p) => sum + p.amount, 0);
   const remaining = totalAmount - paidSoFar;
@@ -164,6 +176,7 @@ export function MultiPaymentModal({
       paymentMethod: "CASH",
       items: buildItemsPayload(cartItems),
       customerId: selectedCustomer?.id,
+      ...shippingFields,
     };
 
     const controller = new AbortController();
@@ -286,6 +299,7 @@ export function MultiPaymentModal({
           items: buildItemsPayload(cartItems),
           payments,
           customerId: selectedCustomer?.id,
+          ...shippingFields,
         }),
         signal: controller.signal,
       });
@@ -360,6 +374,42 @@ export function MultiPaymentModal({
                 )}
               </div>
             )}
+
+            {/* Delivery / shipping */}
+            <div className="space-y-2">
+              <label className="text-sm text-slate-300 font-medium">Entrega</label>
+              <select
+                value={shippingMethod}
+                onChange={(e) => setShippingMethod(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-lg bg-slate-700 border border-slate-600 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/40"
+              >
+                <option value="">Retirada na loja (sem entrega)</option>
+                <option value="MOTOBOY">Motoboy</option>
+                <option value="CORREIOS">Correios</option>
+                <option value="TRANSPORTADORA">Transportadora</option>
+              </select>
+              {shippingMethod && (
+                <>
+                  <div className="grid grid-cols-3 gap-2">
+                    <input
+                      value={shippingAddress}
+                      onChange={(e) => setShippingAddress(e.target.value)}
+                      placeholder="Endereço de entrega"
+                      className="col-span-2 px-3 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40"
+                    />
+                    <input
+                      value={shippingCep}
+                      onChange={(e) => setShippingCep(e.target.value)}
+                      placeholder="CEP"
+                      className="px-3 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40"
+                    />
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Esta venda aparecerá em <span className="text-brand-green">Entregas</span>.
+                  </p>
+                </>
+              )}
+            </div>
 
             {/* Payment splits */}
             <div className="space-y-2">

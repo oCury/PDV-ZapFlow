@@ -525,7 +525,7 @@ model VoucherUsage {
 
 model Delivery {
   id              String         @id @default(cuid())
-  sale_id         String         @unique // 1:1 with Sale
+  sale_id         String?        @unique // 1:1 with Sale (null = manual delivery)
   status          DeliveryStatus @default(PENDING)
   carrier         String         @default("MANUAL") // MANUAL | MOTOBOY | CORREIOS | TRANSPORTADORA | NINETYNINE
   external_id     String? // carrier ride/shipment id (e.g. 99 ride id)
@@ -544,7 +544,7 @@ model Delivery {
   created_at      DateTime       @default(now())
   updated_at      DateTime       @updatedAt
 
-  sale Sale @relation(fields: [sale_id], references: [id], onDelete: Cascade)
+  sale Sale? @relation(fields: [sale_id], references: [id], onDelete: Cascade)
 
   @@index([status])
   @@index([carrier])

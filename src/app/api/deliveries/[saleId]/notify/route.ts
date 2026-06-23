@@ -8,7 +8,10 @@ const notifySchema = z.object({
   message: z.string().min(1, "Mensagem é obrigatória").max(1000),
 });
 
-/** POST /api/deliveries/[saleId]/notify — send a manual WhatsApp update to the recipient */
+/**
+ * POST /api/deliveries/[ref]/notify — manual WhatsApp update to the recipient.
+ * `ref` is a Sale id (sale-derived) OR a Delivery id (manual delivery).
+ */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ saleId: string }> }
@@ -26,7 +29,7 @@ export async function POST(
       );
     }
 
-    const { saleId } = await params;
+    const { saleId: ref } = await params;
     const body = await request.json().catch(() => null);
     const parsed = notifySchema.safeParse(body);
     if (!parsed.success) {
@@ -37,18 +40,26 @@ export async function POST(
     }
 
     const sale = await prisma.sale.findUnique({
-      where: { id: saleId },
+      where: { id: ref },
       include: {
         delivery: { select: { recipient_phone: true } },
         customer: { select: { phone: true, whatsapp: true } },
       },
     });
-    if (!sale) {
-      return NextResponse.json({ error: "Venda não encontrada" }, { status: 404 });
+    const standalone = sale
+      ? null
+      : await prisma.delivery.findUnique({
+          where: { id: ref },
+          select: { recipient_phone: true },
+        });
+
+    if (!sale && !standalone) {
+      return NextResponse.json({ error: "Entrega não encontrada" }, { status: 404 });
     }
 
-    const rawPhone =
-      sale.delivery?.recipient_phone ?? sale.customer?.whatsapp ?? sale.customer?.phone ?? "";
+    const rawPhone = sale
+      ? sale.delivery?.recipient_phone ?? sale.customer?.whatsapp ?? sale.customer?.phone ?? ""
+      : standalone?.recipient_phone ?? "";
     const number = rawPhone.replace(/\D/g, "");
     if (number.length < 10) {
       return NextResponse.json(

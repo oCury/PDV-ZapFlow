@@ -14,6 +14,7 @@ import {
   AlertCircle,
   Pencil,
   Send,
+  Plus,
 } from "lucide-react";
 
 type DeliveryStatus =
@@ -25,7 +26,7 @@ type DeliveryStatus =
   | "CANCELLED";
 
 interface DeliveryRow {
-  saleId: string;
+  saleId: string | null;
   deliveryId: string | null;
   status: DeliveryStatus;
   carrier: string;
@@ -99,6 +100,10 @@ function formatPhone(phone: string | null) {
   return phone;
 }
 
+function refOf(r: { saleId: string | null; deliveryId: string | null }): string {
+  return r.saleId ?? r.deliveryId ?? "";
+}
+
 function buildMessage(status: DeliveryStatus, name: string | null) {
   const greeting = name ? `Olá ${name}!` : "Olá!";
   if (status === "DELIVERED")
@@ -115,6 +120,7 @@ export default function EntregasPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [detail, setDetail] = useState<DeliveryRow | null>(null);
   const [whatsappFor, setWhatsappFor] = useState<DeliveryRow | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
 
   const fetchDeliveries = useCallback(async () => {
     setLoading(true);
@@ -142,9 +148,9 @@ export default function EntregasPage() {
   }, [fetchDeliveries]);
 
   const updateStatus = async (row: DeliveryRow, status: DeliveryStatus) => {
-    setUpdatingId(row.saleId);
+    setUpdatingId(refOf(row));
     try {
-      const res = await fetch(`/api/deliveries/${row.saleId}`, {
+      const res = await fetch(`/api/deliveries/${refOf(row)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
@@ -177,14 +183,23 @@ export default function EntregasPage() {
             {counts} entrega{counts !== 1 ? "s" : ""} · gerencie o envio dos pedidos
           </p>
         </div>
-        <button
-          onClick={fetchDeliveries}
-          disabled={loading}
-          className="p-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-400 transition-colors"
-          title="Atualizar"
-        >
-          <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-green hover:bg-brand-green-hover text-primary-dark font-semibold text-sm transition-colors"
+          >
+            <Plus size={16} />
+            Nova entrega
+          </button>
+          <button
+            onClick={fetchDeliveries}
+            disabled={loading}
+            className="p-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-400 transition-colors"
+            title="Atualizar"
+          >
+            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+          </button>
+        </div>
       </div>
 
       {/* Filters + search */}
@@ -251,9 +266,9 @@ export default function EntregasPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {deliveries.map((row) => (
             <DeliveryCard
-              key={row.saleId}
+              key={refOf(row)}
               row={row}
-              busy={updatingId === row.saleId}
+              busy={updatingId === refOf(row)}
               onAdvance={(s) => updateStatus(row, s)}
               onDetail={() => setDetail(row)}
               onWhatsapp={() => setWhatsappFor(row)}
@@ -279,6 +294,152 @@ export default function EntregasPage() {
           onClose={() => setWhatsappFor(null)}
         />
       )}
+
+      {showCreate && (
+        <NewDeliveryModal
+          onClose={() => setShowCreate(false)}
+          onCreated={() => {
+            setShowCreate(false);
+            fetchDeliveries();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function NewDeliveryModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [recipientName, setRecipientName] = useState("");
+  const [recipientPhone, setRecipientPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [cep, setCep] = useState("");
+  const [fee, setFee] = useState("");
+  const [carrier, setCarrier] = useState("MANUAL");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const create = async () => {
+    if (!recipientName.trim()) {
+      setError("Informe o nome do destinatário.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/deliveries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipientName: recipientName.trim(),
+          recipientPhone: recipientPhone.trim() || null,
+          address: address.trim() || null,
+          cep: cep.trim() || null,
+          fee: fee.trim() ? Number(fee) : null,
+          carrier,
+          notes: notes.trim() || null,
+        }),
+      });
+      if (res.ok) {
+        onCreated();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Não foi possível criar a entrega.");
+      }
+    } catch {
+      setError("Sem conexão com o servidor.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const field =
+    "w-full px-3 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40";
+  const label = "text-xs text-slate-400 mb-1 block";
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+      <div className="bg-slate-800 rounded-3xl shadow-2xl w-full max-w-lg border border-slate-600 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700 sticky top-0 bg-slate-800">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <Plus size={18} className="text-brand-green" />
+            Nova entrega
+          </h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-white">
+            <X size={20} />
+          </button>
+        </div>
+        <div className="p-6 space-y-4">
+          {error && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-sm text-red-400">
+              <AlertCircle size={16} className="shrink-0" />
+              {error}
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={label}>Destinatário *</label>
+              <input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} className={field} autoFocus />
+            </div>
+            <div>
+              <label className={label}>Telefone</label>
+              <input value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} placeholder="(11) 99999-9999" className={field} />
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="col-span-2">
+              <label className={label}>Endereço</label>
+              <input value={address} onChange={(e) => setAddress(e.target.value)} className={field} />
+            </div>
+            <div>
+              <label className={label}>CEP</label>
+              <input value={cep} onChange={(e) => setCep(e.target.value)} className={field} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={label}>Transportadora</label>
+              <select value={carrier} onChange={(e) => setCarrier(e.target.value)} className={field}>
+                {CARRIERS.map((c) => (
+                  <option key={c} value={c}>
+                    {CARRIER_LABELS[c]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={label}>Frete (R$)</label>
+              <input type="number" inputMode="decimal" value={fee} onChange={(e) => setFee(e.target.value)} className={field} />
+            </div>
+          </div>
+          <div>
+            <label className={label}>Observações</label>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className={field} />
+          </div>
+        </div>
+        <div className="flex gap-2 px-6 py-4 border-t border-slate-700 sticky bottom-0 bg-slate-800">
+          <button
+            onClick={onClose}
+            className="px-4 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm font-medium transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={create}
+            disabled={saving}
+            className="flex-1 py-2.5 rounded-xl bg-brand-green hover:bg-brand-green-hover disabled:opacity-60 text-primary-dark font-bold text-sm transition-colors flex items-center justify-center gap-2"
+          >
+            {saving ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+            Criar entrega
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -401,7 +562,7 @@ function DetailModal({
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch(`/api/deliveries/${row.saleId}`, {
+      const res = await fetch(`/api/deliveries/${refOf(row)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -546,7 +707,7 @@ function WhatsappModal({ row, onClose }: { row: DeliveryRow; onClose: () => void
     setSending(true);
     setResult(null);
     try {
-      const res = await fetch(`/api/deliveries/${row.saleId}/notify`, {
+      const res = await fetch(`/api/deliveries/${refOf(row)}/notify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message }),
