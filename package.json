@@ -16,6 +16,7 @@
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.98.0",
     "@ducanh2912/next-pwa": "^10.2.9",
     "@prisma/client": "^6.19.3",
     "dexie": "^4.3.0",

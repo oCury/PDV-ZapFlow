@@ -21,8 +21,6 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    console.log("[WhatsApp Webhook]", JSON.stringify(body, null, 2));
-
     const eventType = body.event;
 
     switch (eventType) {
@@ -36,12 +34,12 @@ export async function POST(request: NextRequest) {
         await handleConnectionUpdate(body.data);
         break;
       default:
-        console.log(`[WhatsApp Webhook] Unhandled event: ${eventType}`);
+        // unhandled event type — no action needed
+        break;
     }
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error("[WhatsApp Webhook Error]", error);
     return NextResponse.json(
       { error: "Webhook processing failed" },
       { status: 500 }
@@ -49,16 +47,16 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function handleIncomingMessage(data: Record<string, unknown>) {
-  console.log("[WhatsApp] Incoming message:", data);
+async function handleIncomingMessage(_data: Record<string, unknown>) {
+  // placeholder for incoming message handling
 }
 
-async function handleMessageUpdate(data: Record<string, unknown>) {
-  console.log("[WhatsApp] Message update:", data);
+async function handleMessageUpdate(_data: Record<string, unknown>) {
+  // placeholder for message update handling
 }
 
-async function handleConnectionUpdate(data: Record<string, unknown>) {
-  console.log("[WhatsApp] Connection update:", data);
+async function handleConnectionUpdate(_data: Record<string, unknown>) {
+  // placeholder for connection update handling
 }
 
 export async function GET() {

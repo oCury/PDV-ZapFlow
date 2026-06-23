@@ -44,14 +44,14 @@ function getCachedProducts(): Product[] | null {
     if (!raw) return null;
     const { data, ts } = JSON.parse(raw);
     if (Date.now() - ts < CACHE_TTL) return data;
-  } catch { /* ignore */ }
+  } catch { /* intentionally ignored — sessionStorage may be unavailable */ }
   return null;
 }
 
 function setCachedProducts(data: Product[]): void {
   try {
     sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() }));
-  } catch { /* ignore quota errors */ }
+  } catch { /* intentionally ignored — quota errors are non-fatal */ }
 }
 
 export function useProducts() {

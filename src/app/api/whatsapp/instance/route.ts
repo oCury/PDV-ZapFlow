@@ -34,14 +34,11 @@ export async function GET() {
     }
 
     const instancesResult = await evolutionAPI.fetchInstances();
-    
-    // Log full result for debugging
-    console.log("[WhatsApp Instance] Full result:", JSON.stringify(instancesResult, null, 2));
-    
+
     // Evolution API v2 returns array directly in data, but structure varies
     // Sometimes it's data[].instance.instanceName, sometimes data[].instanceName
     let allInstances: unknown[] = [];
-    
+
     if (Array.isArray(instancesResult.data)) {
       allInstances = instancesResult.data;
     } else if (instancesResult.data && typeof instancesResult.data === 'object') {
@@ -52,39 +49,30 @@ export async function GET() {
       }
     }
 
-    console.log("[WhatsApp Instance] Instances array length:", allInstances.length);
-    if (allInstances.length > 0) {
-      console.log("[WhatsApp Instance] First instance structure:", JSON.stringify(allInstances[0], null, 2));
-    }
-    
     // Normalize instance data - Evolution API v2 has different formats
     const normalizedInstances = allInstances.map((inst: unknown) => {
       const instObj = inst as Record<string, unknown>;
       // Try different property paths - Evolution API sometimes nests, sometimes doesn't
       const instanceData = (instObj.instance || instObj) as Record<string, unknown>;
-      
+
       // Get name from various possible paths
       const name = String(
-        instanceData.instanceName || 
-        instanceData.name || 
-        instObj.instanceName || 
-        instObj.name || 
+        instanceData.instanceName ||
+        instanceData.name ||
+        instObj.instanceName ||
+        instObj.name ||
         ""
       );
-      
+
       const owner = String(instanceData.owner || instObj.owner || "");
       const status = String(instanceData.status || instanceData.state || instObj.status || instObj.state || "");
-      
-      console.log("[WhatsApp Instance] Processing:", { name, owner, status });
-      
+
       return {
         instanceName: name,
         owner,
         status,
       };
     }).filter((inst) => inst.instanceName && inst.instanceName !== "undefined");
-
-    console.log("[WhatsApp Instance] Final normalized:", normalizedInstances);
 
     return NextResponse.json({
       configured: true,
@@ -126,16 +114,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     const instanceName = body.instanceName || process.env.EVOLUTION_INSTANCE_NAME;
 
-    console.log("[WhatsApp Instance] Creating instance:", instanceName);
-    console.log("[WhatsApp Instance] API URL:", process.env.EVOLUTION_API_URL);
-
     const result = await evolutionAPI.createInstance({
       instanceName,
       qrcode: true,
       integration: "WHATSAPP-BAILEYS",
     });
-
-    console.log("[WhatsApp Instance] Result:", JSON.stringify(result, null, 2));
 
     if (!result.success) {
       const errorMessage = result.error || "Erro ao criar instância";
@@ -186,7 +169,6 @@ export async function POST(request: NextRequest) {
       message: "Instância criada com sucesso! Agora você pode conectar via QR Code.",
     });
   } catch (error) {
-    console.error("[WhatsApp Instance] Error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erro desconhecido" },
       { status: 500 }

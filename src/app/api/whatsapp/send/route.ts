@@ -32,8 +32,6 @@ export async function POST(request: NextRequest) {
     }
 
     const { number, message, type, mediaUrl, caption, fileName, instanceName } = parsed.data;
-    
-    console.log("[WhatsApp Send] Sending to:", number, "via instance:", instanceName || "default");
 
     let result;
 
@@ -61,8 +59,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("[WhatsApp Send] Result:", result);
-
     if (!result.success) {
       return NextResponse.json(
         { error: result.error || "Erro ao enviar mensagem" },
@@ -76,7 +72,6 @@ export async function POST(request: NextRequest) {
       data: result.data,
     });
   } catch (error) {
-    console.error("[WhatsApp Send] Error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erro desconhecido" },
       { status: 500 }

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { Package, TrendingUp, DollarSign, Loader2 } from "lucide-react";
+import { DollarSign, Loader2 } from "lucide-react";
 
 interface RevenueData {
   revenue: number;
@@ -51,8 +51,7 @@ export default function SalesPage() {
         setMonthlyRevenue(monthlyData.revenue);
         setCategorySales(categoriesData);
         setTopSellers(topSellersData);
-      } catch (err) {
-        console.error("Failed to fetch analytics data:", err);
+      } catch {
         setError("Erro ao carregar dados de vendas.");
       } finally {
         setLoading(false);

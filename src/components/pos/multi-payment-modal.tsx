@@ -121,7 +121,7 @@ export function MultiPaymentModal({
             }
           }
         } catch {
-          // ignore
+          // intentionally ignored — polling errors are non-fatal
         }
       }, 3000);
       return () => {
@@ -166,36 +166,51 @@ export function MultiPaymentModal({
       customerId: selectedCustomer?.id,
     };
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30_000);
+
     try {
       const res = await fetch("/api/sales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
+        signal: controller.signal,
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        setErrorMessage(data.error || "Erro ao processar venda.");
+        const data = await res.json().catch(() => ({}));
+        setErrorMessage(data.error || "Venda não registrada. Tente novamente.");
         setPaymentStatus("FAILED");
         return;
       }
       setPaymentStatus("SUCCESS");
       setChange(received - totalAmount);
       setAmountReceived(received.toString());
-    } catch {
-      setErrorMessage("Erro de conexão ao processar venda.");
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === "AbortError") {
+        setErrorMessage(
+          "A operação demorou muito. Tente novamente ou use outro método de pagamento."
+        );
+      } else {
+        setErrorMessage("Sem conexão com o servidor. Verifique sua internet.");
+      }
       setPaymentStatus("FAILED");
+    } finally {
+      clearTimeout(timeoutId);
     }
   };
 
   const handleCardPayment = async () => {
     if (!DEVICE_ID) {
-      setErrorMessage("Mercado Pago Device ID não configurado");
+      setErrorMessage("Maquininha não configurada. Acesse Configurações para vincular o dispositivo Mercado Pago.");
       setPaymentStatus("FAILED");
       return;
     }
 
     setPaymentStatus("PROCESSING");
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30_000);
 
     try {
       const res = await fetch("/api/checkout/create-intent", {
@@ -206,9 +221,15 @@ export function MultiPaymentModal({
           deviceId: DEVICE_ID,
           items: buildItemsPayload(cartItems),
         }),
+        signal: controller.signal,
       });
 
       if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setErrorMessage(
+          data.error ||
+            "Pagamento não aprovado. Verifique a conexão com a maquininha e tente novamente."
+        );
         setPaymentStatus("FAILED");
         return;
       }
@@ -216,8 +237,26 @@ export function MultiPaymentModal({
       const data = await res.json();
       setIntentId(data.intentId);
       setSaleId(data.saleId);
-    } catch {
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === "AbortError") {
+        setErrorMessage(
+          "A operação demorou muito. Tente novamente ou use outro método de pagamento."
+        );
+      } else if (
+        err instanceof TypeError &&
+        err.message.toLowerCase().includes("fetch")
+      ) {
+        setErrorMessage(
+          "Sem conexão com o servidor. Verifique sua internet."
+        );
+      } else {
+        setErrorMessage(
+          "Pagamento não aprovado. Verifique a conexão com a maquininha e tente novamente."
+        );
+      }
       setPaymentStatus("FAILED");
+    } finally {
+      clearTimeout(timeoutId);
     }
   };
 
@@ -235,6 +274,9 @@ export function MultiPaymentModal({
     setPaymentStatus("PROCESSING");
     setErrorMessage(null);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30_000);
+
     try {
       const res = await fetch("/api/sales", {
         method: "POST",
@@ -245,23 +287,34 @@ export function MultiPaymentModal({
           payments,
           customerId: selectedCustomer?.id,
         }),
+        signal: controller.signal,
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        setErrorMessage(data.error || "Erro ao processar venda.");
+        const data = await res.json().catch(() => ({}));
+        setErrorMessage(data.error || "Venda não registrada. Tente novamente.");
         setPaymentStatus("FAILED");
         return;
       }
       setPaymentStatus("SUCCESS");
-    } catch {
-      setErrorMessage("Erro de conexão ao processar venda.");
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === "AbortError") {
+        setErrorMessage(
+          "A operação demorou muito. Tente novamente ou use outro método de pagamento."
+        );
+      } else {
+        setErrorMessage("Sem conexão com o servidor. Verifique sua internet.");
+      }
       setPaymentStatus("FAILED");
+    } finally {
+      clearTimeout(timeoutId);
     }
   };
 
   const handlePixPayment = () => {
-    setErrorMessage("Funcionalidade PIX ainda não implementada.");
+    setErrorMessage(
+      "Pagamento via PIX ainda não disponível nesta versão. Use Dinheiro, Cartão ou Vale."
+    );
   };
 
   const handleConfirmPayment = () => {

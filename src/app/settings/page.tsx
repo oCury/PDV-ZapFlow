@@ -72,8 +72,6 @@ export default function SettingsPage() {
 
     async function load() {
       setLoading(true);
-      console.log("[WhatsApp]","Carregando...");
-
       try {
         // 1. Load saved instance from settings
         let savedInstance = "";
@@ -82,10 +80,9 @@ export default function SettingsPage() {
           if (!cancelled) {
             const d = await r.json();
             savedInstance = d?.settings?.whatsapp_instance || "";
-            console.log("[WhatsApp]",`Settings OK. Instância salva: "${savedInstance}"`);
           }
-        } catch (e) {
-          if (!cancelled) console.log("[WhatsApp]",`Settings erro: ${e}`);
+        } catch {
+          // intentionally ignored
         }
 
         if (cancelled) return;
@@ -103,14 +100,8 @@ export default function SettingsPage() {
               apiData.instances.map((i: { instanceName: string }) => i.instanceName)
             );
           }
-          console.log("[WhatsApp]",
-            `API OK. Instâncias: ${apiData.instances?.map((i: { instanceName: string }) => i.instanceName).join(", ")}`
-          );
         } else {
           setApiReachable(false);
-          console.log("[WhatsApp]",
-            `API falhou: configured=${apiData.configured}, reachable=${apiData.reachable}, error=${apiData.error || "none"}`
-          );
           setLoading(false);
           return;
         }
@@ -126,19 +117,15 @@ export default function SettingsPage() {
             const statusData = await statusRes.json();
             if (!cancelled) {
               setInstanceConnected(statusData.connected || false);
-              console.log("[WhatsApp]",
-                `Instância "${savedInstance}": ${statusData.connected ? "conectada" : "desconectada"} (state: ${statusData.state})`
-              );
               if (statusData.connected) setQrCode(null);
             }
           } catch {
             if (!cancelled) setInstanceConnected(false);
           }
         }
-      } catch (err) {
+      } catch {
         if (!cancelled) {
           setApiReachable(false);
-          console.log("[WhatsApp]",`Erro geral: ${err}`);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -178,7 +165,6 @@ export default function SettingsPage() {
   const reload = async () => {
     setLoading(true);
     setApiReachable(null);
-    console.log("[WhatsApp]","Recarregando...");
 
     try {
       const apiRes = await fetch("/api/whatsapp/instance");
@@ -186,7 +172,6 @@ export default function SettingsPage() {
 
       if (apiData.configured && apiData.reachable) {
         setApiReachable(true);
-        console.log("[WhatsApp]","API reconectada com sucesso!");
 
         if (activeInstanceName) {
           try {
@@ -201,13 +186,9 @@ export default function SettingsPage() {
         }
       } else {
         setApiReachable(false);
-        console.log("[WhatsApp]",
-          `API: configured=${apiData.configured}, reachable=${apiData.reachable}, error=${apiData.error}`
-        );
       }
-    } catch (err) {
+    } catch {
       setApiReachable(false);
-      console.log("[WhatsApp]",`Erro ao recarregar: ${err}`);
     } finally {
       setLoading(false);
     }
@@ -221,7 +202,7 @@ export default function SettingsPage() {
         body: JSON.stringify({ settings: { whatsapp_instance: name } }),
       });
     } catch {
-      // silent
+      // intentionally ignored
     }
   };
 

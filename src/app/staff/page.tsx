@@ -42,7 +42,7 @@ export default function StaffPage() {
       const res = await fetch("/api/staff");
       if (res.ok) setUsers(await res.json());
     } catch {
-      /* ignore */
+      // intentionally ignored
     } finally {
       setLoading(false);
     }

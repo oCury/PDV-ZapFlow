@@ -46,8 +46,8 @@ export default function CustomersPage() {
     try {
       const res = await fetch("/api/customers");
       if (res.ok) setCustomers(await res.json());
-    } catch { /* silent */ }
-    finally { setLoading(false); }
+    } catch { // intentionally ignored
+    } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
