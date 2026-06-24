@@ -246,6 +246,7 @@ model Sale {
   fiscal_events    FiscalEvent[]
   exchanges        Exchange[]
   voucher_usages   VoucherUsage[]
+  terminal_charges TerminalCharge[]
 
   @@index([table_id])
   @@index([seller_id])
@@ -256,16 +257,89 @@ model Sale {
 }
 
 model SalePayment {
-  id             String        @id @default(cuid())
-  sale_id        String
-  payment_method PaymentMethod
-  amount         Decimal       @db.Decimal(10, 2)
-  created_at     DateTime      @default(now())
+  id                 String        @id @default(cuid())
+  sale_id            String
+  payment_method     PaymentMethod
+  amount             Decimal       @db.Decimal(10, 2)
+  created_at         DateTime      @default(now())
+  terminal_charge_id String?
+  installments       Int?
+  card_brand         String?
+  mp_payment_id      String?
 
   sale Sale @relation(fields: [sale_id], references: [id], onDelete: Cascade)
 
   @@index([sale_id])
   @@map("sale_payments")
+}
+
+enum TerminalOperatingMode {
+  PDV
+  STANDALONE
+}
+
+enum TerminalStatus {
+  ONLINE
+  OFFLINE
+  BUSY
+  UNKNOWN
+}
+
+enum TerminalChargeMethod {
+  CREDIT
+  DEBIT
+  PIX
+}
+
+enum TerminalChargeStatus {
+  CREATED
+  SENT
+  PROCESSING
+  APPROVED
+  DECLINED
+  CANCELED
+  ERROR
+  EXPIRED
+}
+
+model PaymentTerminal {
+  id             String                @id @default(cuid())
+  name           String
+  mp_device_id   String                @unique
+  operating_mode TerminalOperatingMode @default(PDV)
+  status         TerminalStatus        @default(UNKNOWN)
+  location_label String?
+  is_active      Boolean               @default(true)
+  last_seen_at   DateTime?
+  created_at     DateTime              @default(now())
+
+  charges TerminalCharge[]
+
+  @@index([is_active])
+  @@map("payment_terminals")
+}
+
+model TerminalCharge {
+  id            String               @id @default(cuid())
+  sale_id       String?
+  terminal_id   String
+  mp_order_id   String               @unique
+  mp_payment_id String?
+  amount        Decimal              @db.Decimal(10, 2)
+  method        TerminalChargeMethod
+  installments  Int                  @default(1)
+  status        TerminalChargeStatus @default(CREATED)
+  error_code    String?
+  created_at    DateTime             @default(now())
+  resolved_at   DateTime?
+
+  terminal PaymentTerminal @relation(fields: [terminal_id], references: [id])
+  sale     Sale?           @relation(fields: [sale_id], references: [id])
+
+  @@index([terminal_id])
+  @@index([sale_id])
+  @@index([status])
+  @@map("terminal_charges")
 }
 
 model CashRegisterShift {
