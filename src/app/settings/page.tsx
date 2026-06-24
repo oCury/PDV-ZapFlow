@@ -2,6 +2,7 @@
 
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   Monitor,
   Moon,
@@ -19,6 +20,8 @@ import {
   WifiOff,
   Plus,
   Server,
+  CreditCard,
+  ChevronRight,
 } from "lucide-react";
 
 type ThemeOption = "light" | "dark" | "system";
@@ -753,6 +756,24 @@ export default function SettingsPage() {
           )}
         </div>
       </section>
+
+      {/* ── Terminals ──────────────────────────────────────────────── */}
+      <Link href="/settings/terminals">
+        <section className="theme-bg-surface rounded-2xl border theme-border overflow-hidden hover:border-brand-green/50 transition-colors cursor-pointer">
+          <div className="flex items-center gap-3 px-6 py-4">
+            <div className="p-2 bg-brand-green/10 rounded-xl">
+              <CreditCard size={18} className="text-brand-green" />
+            </div>
+            <div className="flex-1">
+              <h2 className="font-semibold theme-text-primary text-sm">Maquininhas</h2>
+              <p className="theme-text-secondary text-xs">
+                Sincronize e gerencie os terminais Mercado Pago Point
+              </p>
+            </div>
+            <ChevronRight size={18} className="text-slate-400" />
+          </div>
+        </section>
+      </Link>
 
       {/* ── Store Settings (placeholder) ───────────────────────────── */}
       <section className="bg-slate-800 rounded-2xl border border-slate-700 overflow-hidden opacity-60">
