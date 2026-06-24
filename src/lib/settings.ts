@@ -34,11 +34,6 @@ export async function setSetting(key: string, value: string): Promise<void> {
   });
 }
 
-export async function getMaxInstallments(): Promise<number> {
-  const n = await getNumericSetting("max_installments");
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1;
-}
-
 /**
  * Get all settings as a flat object, merged with defaults.
  */
