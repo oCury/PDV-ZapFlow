@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getPayment, validateWebhookSignature } from "@/lib/mercadopago";
+import { getPayment, validateWebhookSignature } from "@/lib/mercadopago/checkout";
 import { getOrder } from "@/lib/mercadopago/orders";
 import { finalizeCharge } from "@/lib/mercadopago/finalize";
 
