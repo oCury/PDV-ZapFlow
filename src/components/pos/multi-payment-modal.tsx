@@ -20,6 +20,7 @@ import type { PaymentSplit } from "@/lib/validations/pos";
 import { NumericKeypad } from "./numeric-keypad";
 import { ReceiptPrint } from "./receipt-print";
 import { VoucherPaymentInput } from "./voucher-payment-input";
+import { TerminalPaymentPanel } from "./terminal-payment-panel";
 
 interface SelectedCustomer {
   id: string;
@@ -42,8 +43,6 @@ type PaymentStatus = "IDLE" | "PROCESSING" | "SUCCESS" | "FAILED";
 interface PaymentWithVoucher extends PaymentSplit {
   voucherCode?: string;
 }
-
-const DEVICE_ID = process.env.NEXT_PUBLIC_MERCADOPAGO_DEVICE_ID || "";
 
 const PAYMENT_METHODS: { key: PaymentMethod; icon: typeof Banknote; label: string }[] = [
   { key: "CASH", icon: Banknote, label: "Dinheiro" },
@@ -77,6 +76,7 @@ export function MultiPaymentModal({
   const [change, setChange] = useState(0);
   const [intentId, setIntentId] = useState<string | null>(null);
   const [saleId, setSaleId] = useState<string | null>(null);
+  const [chargeId, setChargeId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showAddPayment, setShowAddPayment] = useState(false);
   const [addPaymentMethod, setAddPaymentMethod] = useState<PaymentMethod | null>(null);
@@ -96,6 +96,7 @@ export function MultiPaymentModal({
       setChange(0);
       setIntentId(null);
       setSaleId(null);
+      setChargeId(null);
       setErrorMessage(null);
       setShowAddPayment(false);
       setAddPaymentMethod(null);
@@ -108,16 +109,21 @@ export function MultiPaymentModal({
   }, [isOpen]);
 
   useEffect(() => {
-    if (paymentStatus === "PROCESSING" && saleId) {
+    if (paymentStatus === "PROCESSING" && chargeId) {
       pollIntervalRef.current = setInterval(async () => {
         try {
-          const res = await fetch(`/api/sales/${saleId}/status`);
+          const res = await fetch(`/api/checkout/terminal-charge/${chargeId}`);
           if (res.ok) {
             const data = await res.json();
             if (data.approved) {
               clearInterval(pollIntervalRef.current!);
               pollIntervalRef.current = null;
               setPaymentStatus("SUCCESS");
+            } else if (data.status === "DECLINED" || data.status === "ERROR") {
+              clearInterval(pollIntervalRef.current!);
+              pollIntervalRef.current = null;
+              setErrorMessage("Pagamento recusado. Tente outro cartão ou método.");
+              setPaymentStatus("FAILED");
             }
           }
         } catch {
@@ -128,7 +134,7 @@ export function MultiPaymentModal({
         if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
       };
     }
-  }, [paymentStatus, saleId]);
+  }, [paymentStatus, chargeId]);
 
   const addPayment = (method: PaymentMethod, amount: number, voucherCode?: string) => {
     if (amount <= 0) return;
@@ -188,35 +194,35 @@ export function MultiPaymentModal({
     }
   };
 
-  const handleCardPayment = async () => {
-    if (!DEVICE_ID) {
-      setErrorMessage("Mercado Pago Device ID não configurado");
-      setPaymentStatus("FAILED");
-      return;
-    }
-
+  const handleTerminalSend = async ({
+    terminalId,
+    method,
+    installments,
+  }: { terminalId: string; method: "CREDIT" | "DEBIT" | "PIX"; installments: number }) => {
     setPaymentStatus("PROCESSING");
-
+    setErrorMessage(null);
     try {
-      const res = await fetch("/api/checkout/create-intent", {
+      const res = await fetch("/api/checkout/terminal-charge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: totalAmount,
-          deviceId: DEVICE_ID,
+          terminalId,
+          method,
+          installments,
+          totalAmount,
           items: buildItemsPayload(cartItems),
+          customerId: selectedCustomer?.id,
         }),
       });
-
+      const data = await res.json();
       if (!res.ok) {
+        setErrorMessage(data.error || "Erro ao enviar para a maquininha.");
         setPaymentStatus("FAILED");
         return;
       }
-
-      const data = await res.json();
-      setIntentId(data.intentId);
-      setSaleId(data.saleId);
+      setChargeId(data.chargeId);
     } catch {
+      setErrorMessage("Erro de conexão com a maquininha.");
       setPaymentStatus("FAILED");
     }
   };
@@ -273,8 +279,6 @@ export function MultiPaymentModal({
         setAmountReceived(p.amount.toString());
         setChange(p.amount - totalAmount);
         handleCashPayment(p.amount);
-      } else if (p.paymentMethod === "CARD") {
-        handleCardPayment();
       } else {
         handlePixPayment();
       }
@@ -441,6 +445,14 @@ export function MultiPaymentModal({
               </div>
             )}
 
+            {/* Single payment: Terminal (CARD) */}
+            {payments.length === 1 && payments[0].paymentMethod === "CARD" && (
+              <TerminalPaymentPanel
+                totalAmount={totalAmount}
+                onSend={handleTerminalSend}
+              />
+            )}
+
             {errorMessage && (
               <p className="text-red-400 text-sm">{errorMessage}</p>
             )}
@@ -451,6 +463,7 @@ export function MultiPaymentModal({
                 onClick={handleConfirmPayment}
                 disabled={
                   payments.length === 0 ||
+                  (payments.length === 1 && payments[0].paymentMethod === "CARD") ||
                   (payments.length === 1 &&
                     payments[0].paymentMethod === "CASH" &&
                     (parseFloat(amountReceived) || 0) < totalAmount)
@@ -477,12 +490,25 @@ export function MultiPaymentModal({
             <Loader2 size={64} className="animate-spin text-brand-green mb-6" />
             <h2 className="text-2xl font-bold mb-3">Processando Pagamento</h2>
             <p className="text-slate-300">
-              {payments.some((p) => p.paymentMethod === "CARD")
+              {chargeId
                 ? "Aproxime ou insira o cartão na maquininha."
                 : "Registrando venda..."}
             </p>
             {intentId && (
               <p className="text-sm text-slate-500 mt-4">ID: {intentId}</p>
+            )}
+            {chargeId && (
+              <button
+                type="button"
+                onClick={async () => {
+                  await fetch(`/api/checkout/terminal-charge/${chargeId}/cancel`, { method: "POST" });
+                  setPaymentStatus("IDLE");
+                  setChargeId(null);
+                }}
+                className="mt-6 touch-target min-h-[48px] px-6 rounded-xl border-2 border-slate-600 text-slate-300 hover:text-slate-200"
+              >
+                Cancelar cobrança
+              </button>
             )}
           </div>
         );
