@@ -70,7 +70,7 @@ model Category {
   id          String     @id @default(cuid())
   tenant_id   String?
   name        String
-  slug        String     @unique
+  slug        String
   parent_id   String?
   image_url   String?
   sort_order  Int        @default(0)
@@ -83,6 +83,7 @@ model Category {
   commission_rules   CommissionCategoryRule[]
 
   @@index([tenant_id])
+  @@unique([tenant_id, slug])
   @@index([parent_id])
   @@index([slug])
   @@map("categories")
@@ -94,7 +95,7 @@ model Product {
   id             String           @id @default(cuid())
   tenant_id      String?
   name           String
-  barcode        String           @unique
+  barcode        String
   cost_price     Decimal          @db.Decimal(10, 2)
   sell_price     Decimal          @db.Decimal(10, 2)
   stock_quantity Int              @default(0)
@@ -113,6 +114,7 @@ model Product {
   variants       ProductVariant[]
   category_rel   Category?        @relation(fields: [category_id], references: [id])
 
+  @@unique([tenant_id, barcode])
   @@index([tenant_id])
   @@index([barcode])
   @@index([category])
@@ -126,11 +128,11 @@ model ProductVariant {
   id             String     @id @default(cuid())
   tenant_id      String?
   product_id     String
-  sku            String     @unique
+  sku            String
   size           String     // P, M, G, GG, etc.
   color          String?    // cor ou estampa
   model          String?    // modelo específico
-  barcode        String?    @unique
+  barcode        String?
   stock_quantity Int        @default(0)
   min_stock      Int        @default(0)
   cost_price     Decimal?   @db.Decimal(10, 2) // override do produto base
@@ -142,6 +144,8 @@ model ProductVariant {
   product        Product    @relation(fields: [product_id], references: [id], onDelete: Cascade)
   sale_items     SaleItem[]
 
+  @@unique([tenant_id, sku])
+  @@unique([tenant_id, barcode])
   @@index([tenant_id])
   @@index([product_id])
   @@index([sku])
@@ -223,10 +227,10 @@ model Customer {
   id             String   @id @default(cuid())
   tenant_id      String?
   name           String?
-  email          String?  @unique  // M3
-  phone          String   @unique
+  email          String?  // M3
+  phone          String
   whatsapp       String?
-  cpf            String?  @unique  // M3: Brazilian CPF
+  cpf            String?  // M3: Brazilian CPF
   loyalty_points Int      @default(0) // M3: 1 BRL = 1 point
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
@@ -234,6 +238,9 @@ model Customer {
   followups      CustomerFollowup[]
   vouchers       Voucher[]
 
+  @@unique([tenant_id, email])
+  @@unique([tenant_id, phone])
+  @@unique([tenant_id, cpf])
   @@index([tenant_id])
   @@index([phone])
   @@index([cpf])
@@ -245,7 +252,7 @@ model Customer {
 model Table {
   id         String   @id @default(cuid())
   tenant_id  String?
-  number     Int      @unique
+  number     Int
   name       String?  // e.g. "Mesa Terraço"
   capacity   Int      @default(4)
   whatsapp   String?  // WhatsApp para avisos e cobrança
@@ -254,6 +261,7 @@ model Table {
   updated_at DateTime @updatedAt
   sales      Sale[]
 
+  @@unique([tenant_id, number])
   @@index([tenant_id])
   @@index([status])
   @@map("tables")
@@ -364,7 +372,7 @@ model PaymentTerminal {
   id             String                @id @default(cuid())
   tenant_id      String?
   name           String
-  mp_device_id   String                @unique
+  mp_device_id   String
   operating_mode TerminalOperatingMode @default(PDV)
   status         TerminalStatus        @default(UNKNOWN)
   location_label String?
@@ -374,6 +382,7 @@ model PaymentTerminal {
 
   charges TerminalCharge[]
 
+  @@unique([tenant_id, mp_device_id])
   @@index([tenant_id])
   @@index([is_active])
   @@map("payment_terminals")
@@ -384,7 +393,7 @@ model TerminalCharge {
   tenant_id     String?
   sale_id       String?
   terminal_id   String
-  mp_order_id   String               @unique
+  mp_order_id   String
   mp_payment_id String?
   amount        Decimal              @db.Decimal(10, 2)
   method        TerminalChargeMethod
@@ -397,6 +406,7 @@ model TerminalCharge {
   terminal PaymentTerminal @relation(fields: [terminal_id], references: [id])
   sale     Sale?           @relation(fields: [sale_id], references: [id])
 
+  @@unique([tenant_id, mp_order_id])
   @@index([tenant_id])
   @@index([terminal_id])
   @@index([sale_id])
@@ -475,10 +485,11 @@ model CustomerFollowup {
 model StoreSettings {
   id         String   @id @default(cuid())
   tenant_id  String?
-  key        String   @unique
+  key        String
   value      String
   updated_at DateTime @updatedAt
 
+  @@unique([tenant_id, key])
   @@index([tenant_id])
   @@map("store_settings")
 }
@@ -587,7 +598,7 @@ model FiscalSequence {
   series      Int     @default(1)
   last_number Int     @default(0)
 
-  @@unique([series])
+  @@unique([tenant_id, series])
   @@index([tenant_id])
   @@map("fiscal_sequences")
 }
@@ -641,7 +652,7 @@ model ExchangeItem {
 model Voucher {
   id             String        @id @default(cuid())
   tenant_id      String?
-  code           String        @unique
+  code           String
   type           VoucherType
   original_value Decimal       @db.Decimal(10, 2)
   balance        Decimal       @db.Decimal(10, 2)
@@ -654,6 +665,7 @@ model Voucher {
   exchanges      Exchange[]
   usages         VoucherUsage[]
 
+  @@unique([tenant_id, code])
   @@index([tenant_id])
   @@index([code])
   @@index([customer_id])
