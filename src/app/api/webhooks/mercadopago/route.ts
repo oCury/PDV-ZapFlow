@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getPayment, validateWebhookSignature } from "@/lib/mercadopago";
+import { getPayment, validateWebhookSignature } from "@/lib/mercadopago/checkout";
+import { getOrder } from "@/lib/mercadopago/orders";
+import { finalizeCharge } from "@/lib/mercadopago/finalize";
 
 export async function POST(req: Request) {
   try {
@@ -26,6 +28,24 @@ export async function POST(req: Request) {
         { error: "Invalid signature" },
         { status: 401 }
       );
+    }
+
+    // ── Orders topic (Point Smart terminal) ──────────────────────────────
+    const topic = body.type ?? body.topic;
+    if (topic === "order") {
+      const orderId = String(body.data?.id ?? body.id);
+      if (!orderId || orderId === "undefined") {
+        return NextResponse.json({ error: "Missing order ID" }, { status: 400 });
+      }
+      const order = await getOrder(orderId);
+      const payment = order.transactions?.payments?.[0];
+      if (order.status && payment?.id) {
+        await finalizeCharge(orderId, {
+          status: payment.status ?? order.status,
+          paymentId: payment.id,
+        });
+      }
+      return NextResponse.json({ received: true, order: orderId });
     }
 
     if (body.type !== "payment") {

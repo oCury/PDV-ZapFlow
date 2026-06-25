@@ -8,42 +8,6 @@ function getAccessToken(): string {
   return token;
 }
 
-export async function createPaymentIntent(
-  deviceId: string,
-  amount: number,
-  externalReference: string
-) {
-  const res = await fetch(
-    `${MP_BASE_URL}/point/integration-api/devices/${deviceId}/payment-intents`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${getAccessToken()}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        amount,
-        description: "Venda PDV ZapFlow",
-        payment: {
-          installments: 1,
-          type: "credit_card",
-        },
-        additional_info: {
-          external_reference: externalReference,
-          print_on_terminal: true,
-        },
-      }),
-    }
-  );
-
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Mercado Pago API ${res.status}: ${body}`);
-  }
-
-  return res.json() as Promise<{ id: string }>;
-}
-
 export async function getPayment(paymentId: string) {
   const res = await fetch(`${MP_BASE_URL}/v1/payments/${paymentId}`, {
     headers: { Authorization: `Bearer ${getAccessToken()}` },
