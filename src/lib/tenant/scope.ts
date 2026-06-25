@@ -51,7 +51,9 @@ export function applyTenantScope(operation: string, args: AnyArgs, tenantId: str
       withTenantWhere();
       break;
     default:
-      break; // unknown op: leave unchanged
+      throw new Error(
+        `applyTenantScope: unhandled operation "${operation}" on a tenant-owned model`
+      );
   }
   return next;
 }

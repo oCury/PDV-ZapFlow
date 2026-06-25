@@ -48,4 +48,8 @@ describe("applyTenantScope", () => {
     expect(TENANT_MODELS.has("Product")).toBe(true);
     expect(TENANT_MODELS.has("Tenant")).toBe(false);
   });
+
+  it("throws on an unknown operation for a tenant model (fail-closed)", () => {
+    expect(() => applyTenantScope("someFutureOp", { where: {} }, T)).toThrow(/unhandled operation/);
+  });
 });
