@@ -51,7 +51,8 @@ export function parseSessionToken(token: string): SessionPayload | null {
   const [payload, signature] = parts;
   const expected = Buffer.from(sign(payload), "hex");
   const actual = Buffer.from(signature, "hex");
-  if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return null;
+  // Reject if raw signature string contains non-hex chars or odd length (Buffer.from silently drops them).
+  if (actual.length * 2 !== signature.length || expected.length !== actual.length || !timingSafeEqual(expected, actual)) return null;
   try {
     return JSON.parse(Buffer.from(payload, "base64url").toString());
   } catch {
