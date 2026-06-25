@@ -6,7 +6,15 @@ export interface TenantStore {
 
 const tenantStorage = new AsyncLocalStorage<TenantStore>();
 
-/** Run `fn` with the tenant context bound for its whole async subtree. */
+/**
+ * Run `fn` with the tenant context bound for its whole async subtree.
+ *
+ * IMPORTANT: Prisma promises are lazy — always AWAIT inside `fn`, e.g.
+ * `runWithTenant(id, async () => await prisma.x.findMany())`. If you return an
+ * un-awaited Prisma promise, it resolves AFTER this context exits and the query
+ * runs with no tenant context (getTenantId throws). The request path uses
+ * `enterTenant` instead, which persists across awaits.
+ */
 export function runWithTenant<T>(tenantId: string, fn: () => T): T {
   return tenantStorage.run({ tenantId }, fn);
 }

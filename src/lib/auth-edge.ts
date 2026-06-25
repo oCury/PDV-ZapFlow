@@ -7,6 +7,7 @@ interface SessionPayload {
   userId: string;
   role: "ADMIN" | "EMPLOYEE";
   name: string;
+  tenantId: string;
 }
 
 async function hmacSign(payload: string): Promise<string> {

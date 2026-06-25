@@ -1,6 +1,7 @@
 import { randomBytes, scryptSync, timingSafeEqual, createHmac } from "crypto";
 import { cookies } from "next/headers";
-import { prisma } from "./prisma";
+import { enterTenant } from "./tenant/context";
+import { basePrisma } from "./prisma";
 
 const SESSION_COOKIE = "zf_session";
 
@@ -29,6 +30,7 @@ interface SessionPayload {
   userId: string;
   role: "ADMIN" | "EMPLOYEE";
   name: string;
+  tenantId: string;
 }
 
 function sign(payload: string): string {
@@ -85,19 +87,29 @@ export async function getSessionUser() {
   const session = await getSession();
   if (!session) return null;
 
-  const user = await prisma.user.findUnique({
+  // UNSCOPED lookup by id, then establish tenant context for the rest of the request.
+  const user = await basePrisma.user.findUnique({
     where: { id: session.userId },
-    select: { id: true, name: true, email: true, role: true, active: true },
+    select: { id: true, name: true, email: true, role: true, active: true, tenant_id: true },
   });
 
-  if (!user || !user.active) return null;
+  if (!user || !user.active || !user.tenant_id) return null;
+  enterTenant(user.tenant_id);
   return user;
 }
 
 export async function requireAdmin() {
   const user = await getSessionUser();
-  if (!user || user.role !== "ADMIN") {
-    return null;
-  }
+  if (!user || user.role !== "ADMIN") return null;
   return user;
+}
+
+/** Resolve + bind the current tenant from the session. Returns null if unauthenticated. */
+export async function requireTenant(): Promise<
+  { tenantId: string; userId: string; role: "ADMIN" | "EMPLOYEE" } | null
+> {
+  const session = await getSession();
+  if (!session?.tenantId) return null;
+  enterTenant(session.tenantId);
+  return { tenantId: session.tenantId, userId: session.userId, role: session.role };
 }
