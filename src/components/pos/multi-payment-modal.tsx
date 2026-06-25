@@ -81,7 +81,19 @@ export function MultiPaymentModal({
   const [showAddPayment, setShowAddPayment] = useState(false);
   const [addPaymentMethod, setAddPaymentMethod] = useState<PaymentMethod | null>(null);
   const [addPaymentAmount, setAddPaymentAmount] = useState("");
+  const [shippingMethod, setShippingMethod] = useState("");
+  const [shippingAddress, setShippingAddress] = useState("");
+  const [shippingCep, setShippingCep] = useState("");
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Shipping fields are only sent when a delivery method is chosen (RETIRADA/none = no delivery).
+  const shippingFields = shippingMethod
+    ? {
+        shippingMethod,
+        shippingAddress: shippingAddress.trim() || undefined,
+        shippingCep: shippingCep.trim() || undefined,
+      }
+    : {};
 
   const paidSoFar = payments.reduce((sum, p) => sum + p.amount, 0);
   const remaining = totalAmount - paidSoFar;
@@ -127,7 +139,7 @@ export function MultiPaymentModal({
             }
           }
         } catch {
-          // ignore
+          // intentionally ignored — polling errors are non-fatal
         }
       }, 3000);
       return () => {
@@ -170,27 +182,40 @@ export function MultiPaymentModal({
       paymentMethod: "CASH",
       items: buildItemsPayload(cartItems),
       customerId: selectedCustomer?.id,
+      ...shippingFields,
     };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30_000);
 
     try {
       const res = await fetch("/api/sales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
+        signal: controller.signal,
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        setErrorMessage(data.error || "Erro ao processar venda.");
+        const data = await res.json().catch(() => ({}));
+        setErrorMessage(data.error || "Venda não registrada. Tente novamente.");
         setPaymentStatus("FAILED");
         return;
       }
       setPaymentStatus("SUCCESS");
       setChange(received - totalAmount);
       setAmountReceived(received.toString());
-    } catch {
-      setErrorMessage("Erro de conexão ao processar venda.");
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === "AbortError") {
+        setErrorMessage(
+          "A operação demorou muito. Tente novamente ou use outro método de pagamento."
+        );
+      } else {
+        setErrorMessage("Sem conexão com o servidor. Verifique sua internet.");
+      }
       setPaymentStatus("FAILED");
+    } finally {
+      clearTimeout(timeoutId);
     }
   };
 
@@ -201,6 +226,10 @@ export function MultiPaymentModal({
   }: { terminalId: string; method: "CREDIT" | "DEBIT" | "PIX"; installments: number }) => {
     setPaymentStatus("PROCESSING");
     setErrorMessage(null);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30_000);
+
     try {
       const res = await fetch("/api/checkout/terminal-charge", {
         method: "POST",
@@ -213,17 +242,26 @@ export function MultiPaymentModal({
           items: buildItemsPayload(cartItems),
           customerId: selectedCustomer?.id,
         }),
+        signal: controller.signal,
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setErrorMessage(data.error || "Erro ao enviar para a maquininha.");
         setPaymentStatus("FAILED");
         return;
       }
       setChargeId(data.chargeId);
-    } catch {
-      setErrorMessage("Erro de conexão com a maquininha.");
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === "AbortError") {
+        setErrorMessage(
+          "A operação demorou muito. Tente novamente ou use outro método de pagamento."
+        );
+      } else {
+        setErrorMessage("Sem conexão com a maquininha. Verifique a internet.");
+      }
       setPaymentStatus("FAILED");
+    } finally {
+      clearTimeout(timeoutId);
     }
   };
 
@@ -241,6 +279,9 @@ export function MultiPaymentModal({
     setPaymentStatus("PROCESSING");
     setErrorMessage(null);
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30_000);
+
     try {
       const res = await fetch("/api/sales", {
         method: "POST",
@@ -250,24 +291,36 @@ export function MultiPaymentModal({
           items: buildItemsPayload(cartItems),
           payments,
           customerId: selectedCustomer?.id,
+          ...shippingFields,
         }),
+        signal: controller.signal,
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        setErrorMessage(data.error || "Erro ao processar venda.");
+        const data = await res.json().catch(() => ({}));
+        setErrorMessage(data.error || "Venda não registrada. Tente novamente.");
         setPaymentStatus("FAILED");
         return;
       }
       setPaymentStatus("SUCCESS");
-    } catch {
-      setErrorMessage("Erro de conexão ao processar venda.");
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === "AbortError") {
+        setErrorMessage(
+          "A operação demorou muito. Tente novamente ou use outro método de pagamento."
+        );
+      } else {
+        setErrorMessage("Sem conexão com o servidor. Verifique sua internet.");
+      }
       setPaymentStatus("FAILED");
+    } finally {
+      clearTimeout(timeoutId);
     }
   };
 
   const handlePixPayment = () => {
-    setErrorMessage("Funcionalidade PIX ainda não implementada.");
+    setErrorMessage(
+      "Pagamento via PIX ainda não disponível nesta versão. Use Dinheiro, Cartão ou Vale."
+    );
   };
 
   const handleConfirmPayment = () => {
@@ -311,6 +364,42 @@ export function MultiPaymentModal({
                 )}
               </div>
             )}
+
+            {/* Delivery / shipping */}
+            <div className="space-y-2">
+              <label className="text-sm text-slate-300 font-medium">Entrega</label>
+              <select
+                value={shippingMethod}
+                onChange={(e) => setShippingMethod(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-lg bg-slate-700 border border-slate-600 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand-green/40"
+              >
+                <option value="">Retirada na loja (sem entrega)</option>
+                <option value="MOTOBOY">Motoboy</option>
+                <option value="CORREIOS">Correios</option>
+                <option value="TRANSPORTADORA">Transportadora</option>
+              </select>
+              {shippingMethod && (
+                <>
+                  <div className="grid grid-cols-3 gap-2">
+                    <input
+                      value={shippingAddress}
+                      onChange={(e) => setShippingAddress(e.target.value)}
+                      placeholder="Endereço de entrega"
+                      className="col-span-2 px-3 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40"
+                    />
+                    <input
+                      value={shippingCep}
+                      onChange={(e) => setShippingCep(e.target.value)}
+                      placeholder="CEP"
+                      className="px-3 py-2 rounded-lg bg-slate-700 border border-slate-600 text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-green/40"
+                    />
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Esta venda aparecerá em <span className="text-brand-green">Entregas</span>.
+                  </p>
+                </>
+              )}
+            </div>
 
             {/* Payment splits */}
             <div className="space-y-2">

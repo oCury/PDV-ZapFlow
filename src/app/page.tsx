@@ -7,7 +7,6 @@ import {
   Package,
   DollarSign,
   TrendingUp,
-  Loader2,
   Banknote,
   CreditCard,
   QrCode,
@@ -66,9 +65,51 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full text-slate-400">
-        <Loader2 className="animate-spin mr-2" size={24} />
-        Carregando dashboard...
+      <div className="space-y-6">
+        <div>
+          <div className="h-8 w-36 bg-slate-700 rounded-lg animate-pulse" />
+          <div className="h-4 w-56 bg-slate-700/60 rounded mt-2 animate-pulse" />
+        </div>
+
+        {/* KPI cards skeleton */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="bg-slate-800 rounded-2xl p-5 border border-slate-700 animate-pulse"
+            >
+              <div className="flex items-center justify-between">
+                <div className="h-3 w-24 bg-slate-700 rounded" />
+                <div className="w-9 h-9 bg-slate-700 rounded-xl" />
+              </div>
+              <div className="h-8 w-28 bg-slate-700 rounded mt-3" />
+              <div className="h-3 w-20 bg-slate-700/60 rounded mt-2" />
+            </div>
+          ))}
+        </div>
+
+        {/* Latest sales table skeleton */}
+        <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 animate-pulse">
+          <div className="h-5 w-32 bg-slate-700 rounded mb-4" />
+          <div className="space-y-3">
+            {[0, 1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="flex items-center gap-4 p-3 rounded-xl bg-slate-700/50"
+              >
+                <div className="w-10 h-10 bg-slate-600 rounded-xl shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="h-3.5 w-20 bg-slate-600 rounded" />
+                  <div className="h-3 w-12 bg-slate-600/60 rounded" />
+                </div>
+                <div className="text-right space-y-1.5 shrink-0">
+                  <div className="h-3.5 w-20 bg-slate-600 rounded ml-auto" />
+                  <div className="h-3 w-16 bg-slate-600/60 rounded ml-auto" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

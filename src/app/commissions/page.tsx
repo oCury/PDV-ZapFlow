@@ -121,7 +121,7 @@ export default function CommissionsPage() {
       const res = await fetch("/api/commissions/rules");
       if (res.ok) setRules(await res.json());
     } catch {
-      /* ignore */
+      // intentionally ignored
     } finally {
       setLoading(false);
     }
@@ -135,7 +135,7 @@ export default function CommissionsPage() {
         setStaff(data.filter((u: StaffUser & { active: boolean }) => u.active));
       }
     } catch {
-      /* ignore */
+      // intentionally ignored
     }
   }, []);
 
@@ -144,7 +144,7 @@ export default function CommissionsPage() {
       const res = await fetch("/api/categories");
       if (res.ok) setCategories(await res.json());
     } catch {
-      /* ignore */
+      // intentionally ignored
     }
   }, []);
 
@@ -251,7 +251,7 @@ export default function CommissionsPage() {
       const res = await fetch(`/api/commissions/calculate?${params}`);
       if (res.ok) setCalcResult(await res.json());
     } catch {
-      /* ignore */
+      // intentionally ignored
     } finally {
       setCalculating(false);
     }

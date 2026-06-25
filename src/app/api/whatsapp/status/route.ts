@@ -33,8 +33,6 @@ export async function GET(request: NextRequest) {
     const state = String(instanceData?.state || data?.state || "");
     const isConnected = state === "open";
 
-    console.log("[WhatsApp Status]", { instanceName, state, rawData: JSON.stringify(result.data) });
-
     return NextResponse.json({
       configured: true,
       connected: isConnected,

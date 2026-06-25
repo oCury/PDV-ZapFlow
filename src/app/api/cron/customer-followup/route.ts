@@ -32,17 +32,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log(`[Cron Followup] Starting... (daysAgo: ${daysAgo}, dryRun: ${dryRun})`);
-
     const result = await processFollowups(daysAgo, dryRun);
-
-    console.log(`[Cron Followup] Completed:`, {
-      processed: result.processed,
-      sent: result.sent,
-      failed: result.failed,
-      skipped: result.skipped,
-      totalCashback: result.totalCashbackGiven.toFixed(2),
-    });
 
     return NextResponse.json({
       success: true,
@@ -80,8 +70,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     const dryRun = body.dryRun === true;
     const daysAgo = body.daysAgo ? parseInt(body.daysAgo, 10) : undefined;
-
-    console.log(`[Manual Followup] Starting... (daysAgo: ${daysAgo}, dryRun: ${dryRun})`);
 
     const result = await processFollowups(daysAgo, dryRun);
 

@@ -23,6 +23,7 @@ import {
   ArrowLeftRight,
   Ticket,
   Tag,
+  Truck,
   BarChart3,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
@@ -38,6 +39,7 @@ const navItems: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard, adminOnly: true },
   { href: "/pdv", label: "PDV", icon: ShoppingCart, adminOnly: false },
   { href: "/tables", label: "Mesas", icon: UtensilsCrossed, adminOnly: false },
+  { href: "/entregas", label: "Entregas", icon: Truck, adminOnly: false },
   { href: "/products", label: "Produtos", icon: Package, adminOnly: false },
   { href: "/categories", label: "Categorias", icon: FolderTree, adminOnly: true },
   { href: "/customers", label: "Clientes", icon: UserCheck, adminOnly: true },
@@ -78,14 +80,14 @@ export function Sidebar() {
         setUser(JSON.parse(cached));
         return;
       }
-    } catch { /* ignore */ }
+    } catch { /* intentionally ignored — sessionStorage may be unavailable */ }
 
     fetch("/api/auth/me")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.user) {
           setUser(data.user);
-          try { sessionStorage.setItem("sidebar_user", JSON.stringify(data.user)); } catch { /* ignore */ }
+          try { sessionStorage.setItem("sidebar_user", JSON.stringify(data.user)); } catch { /* intentionally ignored — sessionStorage may be unavailable */ }
         }
       })
       .catch(() => {});
@@ -93,7 +95,7 @@ export function Sidebar() {
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
-    try { sessionStorage.removeItem("sidebar_user"); } catch { /* ignore */ }
+    try { sessionStorage.removeItem("sidebar_user"); } catch { /* intentionally ignored — sessionStorage may be unavailable */ }
     router.push("/login");
     router.refresh();
   };

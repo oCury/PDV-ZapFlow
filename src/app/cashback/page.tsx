@@ -134,7 +134,7 @@ export default function CashbackPage() {
         }
       }
     } catch {
-      /* silent */
+      // intentionally ignored
     } finally {
       setLoading(false);
     }
@@ -149,7 +149,7 @@ export default function CashbackPage() {
         setFollowupDays(data.settings.followup_days || "15");
       }
     } catch {
-      /* silent */
+      // intentionally ignored
     }
   }, []);
 
@@ -265,7 +265,7 @@ export default function CashbackPage() {
         setTimeout(() => setTemplateSaved(false), 2000);
       }
     } catch {
-      /* silent */
+      // intentionally ignored
     } finally {
       setSavingTemplate(false);
     }

@@ -64,7 +64,7 @@ function PdvContent() {
             });
         }
       } catch {
-        /* ignore */
+        // intentionally ignored
       }
     } else {
       setTableOrder(null);
@@ -276,6 +276,53 @@ function PdvContent() {
 
   const handleAddNewProduct = useCallback(() => setIsProductModalOpen(true), []);
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // F2 → focus search/barcode input
+      if (e.key === "F2") {
+        e.preventDefault();
+        manualInputRef.current?.focus();
+        return;
+      }
+
+      // F4 → open cart sheet (mobile) or trigger checkout (desktop, if cart has items)
+      if (e.key === "F4") {
+        e.preventDefault();
+        if (cart.length > 0) {
+          // On mobile show cart sheet; on desktop trigger finish sale directly
+          const isDesktop = window.innerWidth >= 1024;
+          if (isDesktop) {
+            handleFinishSale();
+          } else {
+            setIsCartSheetOpen(true);
+          }
+        }
+        return;
+      }
+
+      // Escape → close any open modal (in priority order)
+      if (e.key === "Escape") {
+        if (isPaymentModalOpen) { setIsPaymentModalOpen(false); return; }
+        if (isCustomerModalOpen) { setIsCustomerModalOpen(false); return; }
+        if (isProductModalOpen) { setIsProductModalOpen(false); return; }
+        if (isCashRegisterOpen) { setIsCashRegisterOpen(false); return; }
+        if (isCartSheetOpen) { setIsCartSheetOpen(false); return; }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    cart.length,
+    handleFinishSale,
+    isPaymentModalOpen,
+    isCustomerModalOpen,
+    isProductModalOpen,
+    isCashRegisterOpen,
+    isCartSheetOpen,
+  ]);
+
   const handlePaymentSuccess = useCallback(() => {
     setCart([]);
     setIsPaymentModalOpen(false);
@@ -319,6 +366,9 @@ function PdvContent() {
             <KeyboardIcon size={16} className="text-brand-green shrink-0" />
             <span className="text-xs sm:text-sm font-semibold text-slate-200 truncate">
               Entrada Manual de Código
+            </span>
+            <span className="ml-auto shrink-0 hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-600 text-slate-400 border border-slate-500">
+              F2
             </span>
           </div>
           <div className="flex gap-2 min-w-0">
@@ -404,6 +454,7 @@ function PdvContent() {
         type="button"
         onClick={() => setIsCartSheetOpen(true)}
         className="lg:hidden fixed bottom-[76px] right-5 z-40 touch-target min-h-[56px] min-w-[56px] flex items-center justify-center rounded-full bg-brand-green hover:bg-brand-green-hover text-primary-dark shadow-xl shadow-brand-green/25"
+        title="Abrir carrinho (F4)"
       >
         <ShoppingCart size={28} />
         {cart.length > 0 && (
@@ -411,6 +462,9 @@ function PdvContent() {
             {cart.length}
           </span>
         )}
+        <span className="absolute -bottom-1 -left-1 hidden sm:flex items-center px-1 py-0.5 rounded text-[9px] font-mono font-bold bg-primary-dark text-slate-400 border border-slate-600">
+          F4
+        </span>
       </button>
 
       {/* Mobile: Cart Bottom Sheet */}

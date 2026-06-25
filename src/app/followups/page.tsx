@@ -58,18 +58,22 @@ export default function FollowupsPage() {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [processResult, setProcessResult] = useState<ProcessResult | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const res = await fetch("/api/followups");
       if (res.ok) {
         const data = await res.json();
         setStats(data.stats);
         setFollowups(data.recent);
+      } else {
+        setLoadError(true);
       }
     } catch {
-      console.error("Error fetching followups");
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -142,6 +146,17 @@ export default function FollowupsPage() {
           </button>
         </div>
       </div>
+
+      {/* Load error */}
+      {loadError && (
+        <div className="flex items-center gap-2 p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-sm text-red-400">
+          <AlertCircle size={18} className="shrink-0" />
+          <span>
+            Não foi possível carregar os dados de follow-up. Verifique sua
+            conexão e tente novamente.
+          </span>
+        </div>
+      )}
 
       {/* Stats Cards */}
       {stats && (

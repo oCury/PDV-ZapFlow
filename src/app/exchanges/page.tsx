@@ -193,7 +193,7 @@ export default function ExchangesPage() {
         );
       }
     } catch {
-      // silent
+      // intentionally ignored
     } finally {
       setLoading(false);
     }

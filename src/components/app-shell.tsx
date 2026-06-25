@@ -5,6 +5,7 @@ import { Sidebar } from "./sidebar";
 import { BottomNav } from "./bottom-nav";
 import { OfflineBanner } from "./offline-banner";
 import { LowStockAlert } from "./low-stock-alert";
+import { SupportChat } from "./support-chat";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -43,6 +44,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Low Stock Alert - shown on all pages */}
       <LowStockAlert />
+
+      {/* AI Support Chat - floating widget */}
+      <SupportChat />
     </div>
   );
 }

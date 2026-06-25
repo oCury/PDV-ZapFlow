@@ -124,7 +124,7 @@ export default function CategoriesPage() {
 
       await fetchCategories();
     } catch {
-      // silently fail
+      // intentionally ignored
     } finally {
       setCreatingSuggestion(null);
     }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   UtensilsCrossed,
@@ -58,22 +58,45 @@ export default function TablesPage() {
   const [whatsappMessage, setWhatsappMessage] = useState("");
   const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
   const [whatsappResult, setWhatsappResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [isPaused, setIsPaused] = useState(false);
+  const pauseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const resumeAfterInactivity = useCallback(() => {
+    if (pauseTimerRef.current) clearTimeout(pauseTimerRef.current);
+    pauseTimerRef.current = setTimeout(() => setIsPaused(false), 5_000);
+  }, []);
+
+  const handleInteractionStart = useCallback(() => {
+    setIsPaused(true);
+    if (pauseTimerRef.current) clearTimeout(pauseTimerRef.current);
+  }, []);
+
+  const handleInteractionEnd = useCallback(() => {
+    resumeAfterInactivity();
+  }, [resumeAfterInactivity]);
 
   const fetchTables = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/tables");
       if (res.ok) setTables(await res.json());
-    } catch { /* silent */ }
-    finally { setLoading(false); }
+    } catch { // intentionally ignored
+    } finally { setLoading(false); }
   }, []);
 
   useEffect(() => {
     fetchTables();
+    return () => {
+      if (pauseTimerRef.current) clearTimeout(pauseTimerRef.current);
+    };
+  }, [fetchTables]);
+
+  useEffect(() => {
+    if (isPaused) return;
     // Auto-refresh every 30s so status stays up-to-date
     const interval = setInterval(fetchTables, 30_000);
     return () => clearInterval(interval);
-  }, [fetchTables]);
+  }, [fetchTables, isPaused]);
 
   const searchCustomerByPhone = async () => {
     const digits = orderPhone.replace(/\D/g, "");
@@ -206,6 +229,11 @@ export default function TablesPage() {
           <p className="text-slate-400 text-sm mt-1">
             {occupied.length} ocupada{occupied.length !== 1 ? "s" : ""} ·{" "}
             {available.length} disponíve{available.length !== 1 ? "is" : "l"}
+            {isPaused && (
+              <span className="ml-2 text-amber-400 text-xs font-medium">
+                · atualização pausada
+              </span>
+            )}
           </p>
         </div>
         <div className="flex gap-2">
@@ -213,7 +241,7 @@ export default function TablesPage() {
             onClick={fetchTables}
             disabled={loading}
             className="p-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-400 transition-colors"
-            title="Atualizar"
+            title="Atualizar agora"
           >
             <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
           </button>
@@ -253,6 +281,8 @@ export default function TablesPage() {
                     table={t}
                     onViewOrder={() => t.openOrder && router.push(`/pdv?orderId=${t.openOrder.id}`)}
                     onSendWhatsapp={t.whatsapp ? () => openWhatsappModal(t) : undefined}
+                    onInteractionStart={handleInteractionStart}
+                    onInteractionEnd={handleInteractionEnd}
                   />
                 ))}
               </div>
@@ -277,6 +307,8 @@ export default function TablesPage() {
                       setError(null);
                     }}
                     onSendWhatsapp={t.whatsapp ? () => openWhatsappModal(t) : undefined}
+                    onInteractionStart={handleInteractionStart}
+                    onInteractionEnd={handleInteractionEnd}
                   />
                 ))}
               </div>
@@ -507,16 +539,24 @@ function TableCard({
   onViewOrder,
   onOpenOrder,
   onSendWhatsapp,
+  onInteractionStart,
+  onInteractionEnd,
 }: {
   table: TableRow;
   onViewOrder?: () => void;
   onOpenOrder?: () => void;
   onSendWhatsapp?: () => void;
+  onInteractionStart?: () => void;
+  onInteractionEnd?: () => void;
 }) {
   const isOccupied = table.status === "OCCUPIED";
 
   return (
     <div
+      onMouseEnter={onInteractionStart}
+      onMouseLeave={onInteractionEnd}
+      onTouchStart={onInteractionStart}
+      onTouchEnd={onInteractionEnd}
       className={`relative rounded-2xl border p-5 flex flex-col gap-4 transition-colors ${
         isOccupied
           ? "bg-slate-800 border-brand-green/30"

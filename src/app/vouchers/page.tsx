@@ -132,7 +132,7 @@ function CreateVoucherModal({
         setCustomerSearch(results);
       }
     } catch {
-      // ignore
+      // intentionally ignored
     } finally {
       setSearching(false);
     }
@@ -189,7 +189,7 @@ function CreateVoucherModal({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // fallback
+      // intentionally ignored — clipboard API may not be available
     }
   };
 
@@ -475,7 +475,7 @@ export default function VouchersPage() {
         setTotal(data.meta.total);
       }
     } catch {
-      // ignore
+      // intentionally ignored
     } finally {
       setLoading(false);
     }
