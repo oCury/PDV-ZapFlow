@@ -186,7 +186,7 @@ export async function processExchange(exchangeId: string) {
       let code = generateVoucherCode();
       let attempts = 0;
       while (attempts < 5) {
-        const existing = await tx.voucher.findUnique({ where: { code } });
+        const existing = await tx.voucher.findFirst({ where: { code } });
         if (!existing) break;
         code = generateVoucherCode();
         attempts++;

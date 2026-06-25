@@ -88,7 +88,7 @@ export async function redeemVoucher(
   saleId: string
 ): Promise<RedeemResult> {
   return prisma.$transaction(async (tx) => {
-    const voucher = await tx.voucher.findUnique({
+    const voucher = await tx.voucher.findFirst({
       where: { code },
     });
 
@@ -143,7 +143,7 @@ export async function redeemVoucher(
  * Cancels a voucher by setting its status to CANCELLED.
  */
 export async function cancelVoucher(code: string): Promise<Voucher> {
-  const voucher = await prisma.voucher.findUnique({
+  const voucher = await prisma.voucher.findFirst({
     where: { code },
   });
 
@@ -187,7 +187,7 @@ export async function expireVouchers(): Promise<number> {
 export async function getVoucherByCode(
   code: string
 ): Promise<(Voucher & { usages: VoucherUsage[] }) | null> {
-  return prisma.voucher.findUnique({
+  return prisma.voucher.findFirst({
     where: { code },
     include: {
       usages: {

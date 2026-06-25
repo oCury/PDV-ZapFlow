@@ -1,20 +1,20 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { requireTenant } from "@/lib/auth";
 
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ code: string }> }
 ) {
-  const session = await getSession();
-  if (!session) {
+  const t = await requireTenant();
+  if (!t) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { code } = await params;
 
   try {
-    const voucher = await prisma.voucher.findUnique({
+    const voucher = await prisma.voucher.findFirst({
       where: { code },
       include: {
         customer: {

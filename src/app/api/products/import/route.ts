@@ -41,14 +41,14 @@ export async function POST(req: Request) {
       }
 
       try {
-        const existing = await prisma.product.findUnique({
+        const existing = await prisma.product.findFirst({
           where: { barcode: p.barcode },
         });
 
         if (existing) {
           // Update stock quantity (add to existing)
           await prisma.product.update({
-            where: { barcode: p.barcode },
+            where: { id: existing.id },
             data: {
               stock_quantity: existing.stock_quantity + p.stock_quantity,
               cost_price: p.cost_price,
