@@ -87,7 +87,7 @@ export async function POST(req: Request) {
 
     const finalSlug = slug ? slugify(slug) : slugify(name);
 
-    const existing = await prisma.category.findUnique({
+    const existing = await prisma.category.findFirst({
       where: { slug: finalSlug },
     });
     if (existing) {

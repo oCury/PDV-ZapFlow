@@ -44,3 +44,6 @@ next-env.d.ts
 
 # strategy PDFs (confidential)
 docs/estrategia/*.pdf
+
+# git worktrees
+.worktrees/

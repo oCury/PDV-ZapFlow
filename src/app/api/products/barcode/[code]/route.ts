@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireTenant } from "@/lib/auth";
 
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ code: string }> }
 ) {
+  const t = await requireTenant();
+  if (!t) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const { code } = await params;
 
   if (!code || code.trim().length === 0) {
@@ -14,7 +18,7 @@ export async function GET(
     );
   }
 
-  const product = await prisma.product.findUnique({
+  const product = await prisma.product.findFirst({
     where: { barcode: code },
     select: {
       id: true,

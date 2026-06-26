@@ -101,7 +101,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const existing = await prisma.product.findUnique({ where: { barcode } });
+    const existing = await prisma.product.findFirst({ where: { barcode } });
     if (existing) {
       return NextResponse.json(
         { error: "Já existe um produto com este código de barras." },

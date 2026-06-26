@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { basePrisma } from "@/lib/prisma";
 import type { TerminalChargeMethod } from "@prisma/client";
 
 export interface FinalizeInput {
@@ -18,9 +18,12 @@ function chargeMethodToPaymentMethod(method: TerminalChargeMethod): "CARD" | "PI
  * Idempotently reconcile a resolved MP order into our DB.
  * Safe to call from both the webhook and the polling fallback — keyed by mp_order_id,
  * a no-op once the charge has reached a terminal state.
+ *
+ * Uses basePrisma (unscoped) — webhook has no user session.
+ * TODO: make webhook fully tenant-aware when multi-MP-account support lands.
  */
 export async function finalizeCharge(orderId: string, input: FinalizeInput): Promise<void> {
-  const charge = await prisma.terminalCharge.findUnique({
+  const charge = await basePrisma.terminalCharge.findFirst({
     where: { mp_order_id: orderId },
     include: { sale: { include: { items: true } } },
   });
@@ -31,7 +34,7 @@ export async function finalizeCharge(orderId: string, input: FinalizeInput): Pro
   const approved = APPROVED_STATES.has(input.status.toLowerCase());
 
   if (!approved) {
-    await prisma.terminalCharge.update({
+    await basePrisma.terminalCharge.update({
       where: { id: charge.id },
       data: {
         status: "DECLINED",
@@ -44,7 +47,7 @@ export async function finalizeCharge(orderId: string, input: FinalizeInput): Pro
   }
 
   const sale = charge.sale;
-  await prisma.$transaction(async (tx) => {
+  await basePrisma.$transaction(async (tx) => {
     await tx.terminalCharge.update({
       where: { id: charge.id },
       data: { status: "APPROVED", mp_payment_id: input.paymentId, resolved_at: new Date() },

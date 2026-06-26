@@ -85,7 +85,7 @@ export async function PUT(
         : undefined;
 
     if (finalSlug && finalSlug !== existing.slug) {
-      const slugTaken = await prisma.category.findUnique({
+      const slugTaken = await prisma.category.findFirst({
         where: { slug: finalSlug },
       });
       if (slugTaken) {

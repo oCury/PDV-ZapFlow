@@ -51,7 +51,7 @@ export async function PUT(
     }
 
     if (sku && sku !== existing.sku) {
-      const duplicateSku = await prisma.productVariant.findUnique({
+      const duplicateSku = await prisma.productVariant.findFirst({
         where: { sku },
       });
       if (duplicateSku) {
@@ -63,7 +63,7 @@ export async function PUT(
     }
 
     if (barcode && barcode !== existing.barcode) {
-      const duplicateBarcode = await prisma.productVariant.findUnique({
+      const duplicateBarcode = await prisma.productVariant.findFirst({
         where: { barcode },
       });
       if (duplicateBarcode) {

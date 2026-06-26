@@ -65,7 +65,7 @@ export async function POST(
         const sku =
           `${id.slice(0, 4)}-${size}-${color || "STD"}`.toUpperCase();
 
-        const existingSku = await prisma.productVariant.findUnique({
+        const existingSku = await prisma.productVariant.findFirst({
           where: { sku },
         });
 

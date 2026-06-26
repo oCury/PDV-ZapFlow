@@ -7,6 +7,38 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Tenant {
+  id            String        @id @default(cuid())
+  name          String
+  slug          String        @unique
+  plan          String?
+  active        Boolean       @default(true)
+  created_at    DateTime      @default(now())
+  updated_at    DateTime      @updatedAt
+  mp_connection MpConnection?
+
+  @@map("tenants")
+}
+
+model MpConnection {
+  id                      String    @id @default(cuid())
+  tenant_id               String    @unique
+  mp_user_id              String
+  access_token            String
+  refresh_token           String
+  public_key              String?
+  scope                   String?
+  token_type              String?
+  live_mode               Boolean   @default(false)
+  access_token_expires_at DateTime?
+  created_at              DateTime  @default(now())
+  updated_at              DateTime  @updatedAt
+  tenant                  Tenant    @relation(fields: [tenant_id], references: [id])
+
+  @@index([mp_user_id])
+  @@map("mp_connections")
+}
+
 enum UserRole {
   ADMIN
   EMPLOYEE
@@ -14,6 +46,7 @@ enum UserRole {
 
 model User {
   id                   String               @id @default(cuid())
+  tenant_id            String?
   name                 String
   email                String               @unique
   password             String
@@ -27,6 +60,7 @@ model User {
   sales_as_seller      Sale[]              @relation("SellerSales")
   processed_exchanges  Exchange[]
 
+  @@index([tenant_id])
   @@map("users")
 }
 
@@ -34,8 +68,9 @@ model User {
 
 model Category {
   id          String     @id @default(cuid())
+  tenant_id   String?
   name        String
-  slug        String     @unique
+  slug        String
   parent_id   String?
   image_url   String?
   sort_order  Int        @default(0)
@@ -47,6 +82,8 @@ model Category {
   products           Product[]
   commission_rules   CommissionCategoryRule[]
 
+  @@index([tenant_id])
+  @@unique([tenant_id, slug])
   @@index([parent_id])
   @@index([slug])
   @@map("categories")
@@ -56,8 +93,9 @@ model Category {
 
 model Product {
   id             String           @id @default(cuid())
+  tenant_id      String?
   name           String
-  barcode        String           @unique
+  barcode        String
   cost_price     Decimal          @db.Decimal(10, 2)
   sell_price     Decimal          @db.Decimal(10, 2)
   stock_quantity Int              @default(0)
@@ -76,6 +114,8 @@ model Product {
   variants       ProductVariant[]
   category_rel   Category?        @relation(fields: [category_id], references: [id])
 
+  @@unique([tenant_id, barcode])
+  @@index([tenant_id])
   @@index([barcode])
   @@index([category])
   @@index([category_id])
@@ -86,12 +126,13 @@ model Product {
 
 model ProductVariant {
   id             String     @id @default(cuid())
+  tenant_id      String?
   product_id     String
-  sku            String     @unique
+  sku            String
   size           String     // P, M, G, GG, etc.
   color          String?    // cor ou estampa
   model          String?    // modelo específico
-  barcode        String?    @unique
+  barcode        String?
   stock_quantity Int        @default(0)
   min_stock      Int        @default(0)
   cost_price     Decimal?   @db.Decimal(10, 2) // override do produto base
@@ -103,6 +144,9 @@ model ProductVariant {
   product        Product    @relation(fields: [product_id], references: [id], onDelete: Cascade)
   sale_items     SaleItem[]
 
+  @@unique([tenant_id, sku])
+  @@unique([tenant_id, barcode])
+  @@index([tenant_id])
   @@index([product_id])
   @@index([sku])
   @@index([size])
@@ -181,11 +225,12 @@ enum DeliveryStatus {
 
 model Customer {
   id             String   @id @default(cuid())
+  tenant_id      String?
   name           String?
-  email          String?  @unique  // M3
-  phone          String   @unique
+  email          String?  // M3
+  phone          String
   whatsapp       String?
-  cpf            String?  @unique  // M3: Brazilian CPF
+  cpf            String?  // M3: Brazilian CPF
   loyalty_points Int      @default(0) // M3: 1 BRL = 1 point
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
@@ -193,6 +238,10 @@ model Customer {
   followups      CustomerFollowup[]
   vouchers       Voucher[]
 
+  @@unique([tenant_id, email])
+  @@unique([tenant_id, phone])
+  @@unique([tenant_id, cpf])
+  @@index([tenant_id])
   @@index([phone])
   @@index([cpf])
   @@map("customers")
@@ -202,7 +251,8 @@ model Customer {
 
 model Table {
   id         String   @id @default(cuid())
-  number     Int      @unique
+  tenant_id  String?
+  number     Int
   name       String?  // e.g. "Mesa Terraço"
   capacity   Int      @default(4)
   whatsapp   String?  // WhatsApp para avisos e cobrança
@@ -211,6 +261,8 @@ model Table {
   updated_at DateTime @updatedAt
   sales      Sale[]
 
+  @@unique([tenant_id, number])
+  @@index([tenant_id])
   @@index([status])
   @@map("tables")
 }
@@ -219,6 +271,7 @@ model Table {
 
 model Sale {
   id               String        @id @default(cuid())
+  tenant_id        String?
   total_amount     Decimal       @db.Decimal(10, 2)
   payment_method   PaymentMethod @default(CASH)
   status           SaleStatus    @default(PENDING)
@@ -258,6 +311,7 @@ model Sale {
   voucher_usages   VoucherUsage[]
   terminal_charges TerminalCharge[]
 
+  @@index([tenant_id])
   @@index([table_id])
   @@index([seller_id])
   @@index([status])
@@ -268,6 +322,7 @@ model Sale {
 
 model SalePayment {
   id                 String        @id @default(cuid())
+  tenant_id          String?
   sale_id            String
   payment_method     PaymentMethod
   amount             Decimal       @db.Decimal(10, 2)
@@ -279,6 +334,7 @@ model SalePayment {
 
   sale Sale @relation(fields: [sale_id], references: [id], onDelete: Cascade)
 
+  @@index([tenant_id])
   @@index([sale_id])
   @@map("sale_payments")
 }
@@ -314,8 +370,9 @@ enum TerminalChargeStatus {
 
 model PaymentTerminal {
   id             String                @id @default(cuid())
+  tenant_id      String?
   name           String
-  mp_device_id   String                @unique
+  mp_device_id   String
   operating_mode TerminalOperatingMode @default(PDV)
   status         TerminalStatus        @default(UNKNOWN)
   location_label String?
@@ -325,15 +382,18 @@ model PaymentTerminal {
 
   charges TerminalCharge[]
 
+  @@unique([tenant_id, mp_device_id])
+  @@index([tenant_id])
   @@index([is_active])
   @@map("payment_terminals")
 }
 
 model TerminalCharge {
   id            String               @id @default(cuid())
+  tenant_id     String?
   sale_id       String?
   terminal_id   String
-  mp_order_id   String               @unique
+  mp_order_id   String
   mp_payment_id String?
   amount        Decimal              @db.Decimal(10, 2)
   method        TerminalChargeMethod
@@ -346,6 +406,8 @@ model TerminalCharge {
   terminal PaymentTerminal @relation(fields: [terminal_id], references: [id])
   sale     Sale?           @relation(fields: [sale_id], references: [id])
 
+  @@unique([tenant_id, mp_order_id])
+  @@index([tenant_id])
   @@index([terminal_id])
   @@index([sale_id])
   @@index([status])
@@ -354,6 +416,7 @@ model TerminalCharge {
 
 model CashRegisterShift {
   id           String    @id @default(cuid())
+  tenant_id    String?
   opened_at    DateTime  @default(now())
   closed_at    DateTime?
   opening_cash Decimal   @db.Decimal(10, 2)
@@ -364,6 +427,7 @@ model CashRegisterShift {
 
   user User @relation(fields: [user_id], references: [id])
 
+  @@index([tenant_id])
   @@index([user_id])
   @@index([status])
   @@map("cash_register_shifts")
@@ -371,6 +435,7 @@ model CashRegisterShift {
 
 model SaleItem {
   id         String  @id @default(cuid())
+  tenant_id  String?
   sale_id    String
   product_id String
   variant_id String? // FK to ProductVariant (SKU-level stock)
@@ -384,6 +449,7 @@ model SaleItem {
   variant        ProductVariant? @relation(fields: [variant_id], references: [id])
   exchange_items ExchangeItem[]
 
+  @@index([tenant_id])
   @@index([sale_id])
   @@index([product_id])
   @@index([variant_id])
@@ -394,6 +460,7 @@ model SaleItem {
 
 model CustomerFollowup {
   id              String   @id @default(cuid())
+  tenant_id       String?
   customer_id     String
   sale_id         String   @unique
   type            String   // "15_DAY_CASHBACK"
@@ -406,6 +473,7 @@ model CustomerFollowup {
   customer Customer @relation(fields: [customer_id], references: [id])
   sale     Sale     @relation(fields: [sale_id], references: [id])
 
+  @@index([tenant_id])
   @@index([customer_id])
   @@index([sale_id])
   @@index([sent_at])
@@ -416,10 +484,13 @@ model CustomerFollowup {
 
 model StoreSettings {
   id         String   @id @default(cuid())
-  key        String   @unique
+  tenant_id  String?
+  key        String
   value      String
   updated_at DateTime @updatedAt
 
+  @@unique([tenant_id, key])
+  @@index([tenant_id])
   @@map("store_settings")
 }
 
@@ -427,6 +498,7 @@ model StoreSettings {
 
 model CommissionRule {
   id              String                  @id @default(cuid())
+  tenant_id       String?
   user_id         String
   type            CommissionType
   default_percent Decimal                 @db.Decimal(5, 2)
@@ -437,12 +509,14 @@ model CommissionRule {
   category_rules  CommissionCategoryRule[]
   tiers           CommissionTier[]
 
+  @@index([tenant_id])
   @@index([user_id])
   @@map("commission_rules")
 }
 
 model CommissionCategoryRule {
   id                 String         @id @default(cuid())
+  tenant_id          String?
   commission_rule_id String
   category_id        String
   percent            Decimal        @db.Decimal(5, 2)
@@ -450,23 +524,27 @@ model CommissionCategoryRule {
   category           Category      @relation(fields: [category_id], references: [id])
 
   @@unique([commission_rule_id, category_id])
+  @@index([tenant_id])
   @@map("commission_category_rules")
 }
 
 model CommissionTier {
   id                 String         @id @default(cuid())
+  tenant_id          String?
   commission_rule_id String
   min_revenue        Decimal        @db.Decimal(10, 2)
   max_revenue        Decimal?       @db.Decimal(10, 2)
   percent            Decimal        @db.Decimal(5, 2)
   commission_rule    CommissionRule @relation(fields: [commission_rule_id], references: [id], onDelete: Cascade)
 
+  @@index([tenant_id])
   @@index([commission_rule_id])
   @@map("commission_tiers")
 }
 
 model SalesGoal {
   id         String   @id @default(cuid())
+  tenant_id  String?
   user_id    String
   period     String   // "DAILY", "WEEKLY", "MONTHLY"
   target     Decimal  @db.Decimal(10, 2)
@@ -475,6 +553,7 @@ model SalesGoal {
   created_at DateTime @default(now())
   user       User     @relation(fields: [user_id], references: [id])
 
+  @@index([tenant_id])
   @@index([user_id, start_date, end_date])
   @@map("sales_goals")
 }
@@ -483,6 +562,7 @@ model SalesGoal {
 
 model FiscalQueue {
   id         String   @id @default(cuid())
+  tenant_id  String?
   sale_id    String   @unique
   payload    String   // JSON do NfcePayload
   attempts   Int      @default(0)
@@ -492,29 +572,34 @@ model FiscalQueue {
   updated_at DateTime @updatedAt
   sale       Sale     @relation(fields: [sale_id], references: [id])
 
+  @@index([tenant_id])
   @@index([status])
   @@map("fiscal_queue")
 }
 
 model FiscalEvent {
   id         String   @id @default(cuid())
+  tenant_id  String?
   sale_id    String
   event_type String   // "transmitted", "authorized", "error", "cancelled", "retry"
   payload    String?  // JSON de contexto
   created_at DateTime @default(now())
   sale       Sale     @relation(fields: [sale_id], references: [id])
 
+  @@index([tenant_id])
   @@index([sale_id])
   @@index([created_at])
   @@map("fiscal_events")
 }
 
 model FiscalSequence {
-  id          String @id @default(cuid())
-  series      Int    @default(1)
-  last_number Int    @default(0)
+  id          String  @id @default(cuid())
+  tenant_id   String?
+  series      Int     @default(1)
+  last_number Int     @default(0)
 
-  @@unique([series])
+  @@unique([tenant_id, series])
+  @@index([tenant_id])
   @@map("fiscal_sequences")
 }
 
@@ -522,6 +607,7 @@ model FiscalSequence {
 
 model Exchange {
   id               String             @id @default(cuid())
+  tenant_id        String?
   original_sale_id String
   status           ExchangeStatus     @default(PENDING)
   reason           ExchangeReason
@@ -539,6 +625,7 @@ model Exchange {
   items            ExchangeItem[]
   processor        User?              @relation(fields: [processed_by], references: [id])
 
+  @@index([tenant_id])
   @@index([original_sale_id])
   @@index([status])
   @@map("exchanges")
@@ -546,6 +633,7 @@ model Exchange {
 
 model ExchangeItem {
   id               String             @id @default(cuid())
+  tenant_id        String?
   exchange_id      String
   original_item_id String
   action           ExchangeItemAction
@@ -554,6 +642,7 @@ model ExchangeItem {
   exchange         Exchange           @relation(fields: [exchange_id], references: [id], onDelete: Cascade)
   original_item    SaleItem           @relation(fields: [original_item_id], references: [id])
 
+  @@index([tenant_id])
   @@index([exchange_id])
   @@map("exchange_items")
 }
@@ -562,7 +651,8 @@ model ExchangeItem {
 
 model Voucher {
   id             String        @id @default(cuid())
-  code           String        @unique
+  tenant_id      String?
+  code           String
   type           VoucherType
   original_value Decimal       @db.Decimal(10, 2)
   balance        Decimal       @db.Decimal(10, 2)
@@ -575,6 +665,8 @@ model Voucher {
   exchanges      Exchange[]
   usages         VoucherUsage[]
 
+  @@unique([tenant_id, code])
+  @@index([tenant_id])
   @@index([code])
   @@index([customer_id])
   @@index([status, expires_at])
@@ -583,6 +675,7 @@ model Voucher {
 
 model VoucherUsage {
   id         String   @id @default(cuid())
+  tenant_id  String?
   voucher_id String
   sale_id    String
   amount     Decimal  @db.Decimal(10, 2)
@@ -590,6 +683,7 @@ model VoucherUsage {
   voucher    Voucher  @relation(fields: [voucher_id], references: [id])
   sale       Sale     @relation(fields: [sale_id], references: [id])
 
+  @@index([tenant_id])
   @@index([voucher_id])
   @@index([sale_id])
   @@map("voucher_usages")
@@ -599,6 +693,7 @@ model VoucherUsage {
 
 model Delivery {
   id              String         @id @default(cuid())
+  tenant_id       String?
   sale_id         String?        @unique // 1:1 with Sale (null = manual delivery)
   status          DeliveryStatus @default(PENDING)
   carrier         String         @default("MANUAL") // MANUAL | MOTOBOY | CORREIOS | TRANSPORTADORA | NINETYNINE
@@ -620,6 +715,7 @@ model Delivery {
 
   sale Sale? @relation(fields: [sale_id], references: [id], onDelete: Cascade)
 
+  @@index([tenant_id])
   @@index([status])
   @@index([carrier])
   @@map("deliveries")

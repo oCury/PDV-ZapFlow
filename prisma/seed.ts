@@ -60,6 +60,13 @@ const products = [
 async function main() {
   console.log("Seeding database...\n");
 
+  // Ensure the default tenant exists
+  const tenant = await prisma.tenant.upsert({
+    where: { slug: "loja-principal" },
+    update: {},
+    create: { name: "Loja Principal", slug: "loja-principal" },
+  });
+
   // Seed admin user
   const adminEmail = "admin@adegailhaabcd.com";
   const existingAdmin = await prisma.user.findUnique({ where: { email: adminEmail } });
@@ -70,6 +77,7 @@ async function main() {
         email: adminEmail,
         password: hashPassword("admin123"),
         role: "ADMIN",
+        tenant_id: tenant.id,
       },
     });
     console.log("  ✓ Admin user created (admin@adegailha.com / admin123)");
@@ -80,7 +88,7 @@ async function main() {
   // Seed products
   for (const product of products) {
     await prisma.product.upsert({
-      where: { barcode: product.barcode },
+      where: { tenant_id_barcode: { tenant_id: tenant.id, barcode: product.barcode } },
       update: {
         name: product.name,
         cost_price: product.cost_price,
@@ -89,7 +97,7 @@ async function main() {
         category: product.category,
         image_url: product.image_url,
       },
-      create: product,
+      create: { ...product, tenant_id: tenant.id },
     });
     console.log(`  ✓ ${product.name} (${product.barcode})`);
   }

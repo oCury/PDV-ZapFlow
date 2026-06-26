@@ -102,7 +102,7 @@ export async function POST(
       rawSku ||
       `${id.slice(0, 4)}-${size}-${color || "STD"}`.toUpperCase();
 
-    const existingSku = await prisma.productVariant.findUnique({
+    const existingSku = await prisma.productVariant.findFirst({
       where: { sku },
     });
     if (existingSku) {
@@ -113,7 +113,7 @@ export async function POST(
     }
 
     if (barcode) {
-      const existingBarcode = await prisma.productVariant.findUnique({
+      const existingBarcode = await prisma.productVariant.findFirst({
         where: { barcode },
       });
       if (existingBarcode) {
