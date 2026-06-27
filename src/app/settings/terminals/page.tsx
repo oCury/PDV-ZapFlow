@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { RefreshCw, CreditCard } from "lucide-react";
+import { MpConnectCard } from "@/components/settings/MpConnectCard";
 
 interface Terminal {
   id: string;
@@ -55,6 +56,8 @@ export default function TerminalsSettingsPage() {
             Sincronizar dispositivos
           </button>
         </header>
+
+        <MpConnectCard />
 
         {error && <p className="text-red-400 text-sm">{error}</p>}
 
