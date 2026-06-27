@@ -21,6 +21,7 @@ describe("createTerminalOrder", () => {
       method: "CREDIT",
       installments: 3,
       externalRef: "chg_1",
+      accessToken: "AT",
     });
     expect(res.id).toBe("ord_1");
     const [path, init] = mpFetchMock.mock.calls[0];
@@ -34,19 +35,22 @@ describe("createTerminalOrder", () => {
     expect(body.transactions.payments[0].payment_method.type).toBe("credit_card");
     expect(body.transactions.payments[0].payment_method.installments).toBe(3);
     expect(init.idempotencyKey).toBe("chg_1");
+    expect(init.accessToken).toBe("AT");
   });
 });
 
 describe("getOrder / cancelOrder", () => {
   it("GETs the order by id", async () => {
     mpFetchMock.mockResolvedValue({ id: "ord_1", status: "processed" });
-    const o = await getOrder("ord_1");
+    const o = await getOrder("ord_1", "AT");
     expect(o.status).toBe("processed");
     expect(mpFetchMock.mock.calls[0][0]).toBe("/v1/orders/ord_1");
+    expect(mpFetchMock.mock.calls[0][1]?.accessToken).toBe("AT");
   });
   it("cancels the order by id", async () => {
     mpFetchMock.mockResolvedValue({ id: "ord_1", status: "canceled" });
-    await cancelOrder("ord_1");
+    await cancelOrder("ord_1", "AT");
     expect(mpFetchMock.mock.calls[0][0]).toBe("/v1/orders/ord_1/cancel");
+    expect(mpFetchMock.mock.calls[0][1]?.accessToken).toBe("AT");
   });
 });

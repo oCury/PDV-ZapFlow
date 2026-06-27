@@ -1,16 +1,8 @@
 import { createHmac } from "crypto";
 
-const MP_BASE_URL = "https://api.mercadopago.com";
-
-function getAccessToken(): string {
-  const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
-  if (!token) throw new Error("MERCADOPAGO_ACCESS_TOKEN is not configured");
-  return token;
-}
-
-export async function getPayment(paymentId: string) {
-  const res = await fetch(`${MP_BASE_URL}/v1/payments/${paymentId}`, {
-    headers: { Authorization: `Bearer ${getAccessToken()}` },
+export async function getPayment(paymentId: string, accessToken: string) {
+  const res = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
   });
 
   if (!res.ok) {

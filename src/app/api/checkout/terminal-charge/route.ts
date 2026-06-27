@@ -4,9 +4,17 @@ import { terminalChargeSchema } from "@/lib/validations/terminal";
 import { getNumericSetting } from "@/lib/settings";
 import { validateInstallments } from "@/lib/mercadopago/amount";
 import { createTerminalOrder } from "@/lib/mercadopago/orders";
+import { resolveMpAccessToken } from "@/lib/mercadopago/connection";
 import { mapMpErrorToOperatorMessage } from "@/lib/mercadopago/errors";
+import { getTenantId } from "@/lib/tenant/context";
+import { requireTenant } from "@/lib/auth";
 
 export async function POST(req: Request) {
+  const tenant = await requireTenant();
+  if (!tenant) {
+    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+  }
+
   const parsed = terminalChargeSchema.safeParse(await req.json());
   if (!parsed.success) {
     return NextResponse.json({ error: "Dados da cobrança inválidos" }, { status: 400 });
@@ -73,12 +81,14 @@ export async function POST(req: Request) {
   });
 
   try {
+    const accessToken = await resolveMpAccessToken(getTenantId());
     const order = await createTerminalOrder({
       terminalDeviceId: terminal.mp_device_id,
       amount: totalAmount,
       method,
       installments,
       externalRef: charge.id,
+      accessToken,
     });
     const updated = await prisma.terminalCharge.update({
       where: { id: charge.id },

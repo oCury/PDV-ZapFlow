@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("@/lib/prisma", () => ({ prisma: {} }));
+vi.mock("@/lib/mercadopago/client", () => ({
+  getAccessToken: vi.fn(() => "TEST_TOKEN"),
+}));
 vi.mock("@/lib/mercadopago", () => ({
   validateWebhookSignature: vi.fn(() => true),
   getPayment: vi.fn(),

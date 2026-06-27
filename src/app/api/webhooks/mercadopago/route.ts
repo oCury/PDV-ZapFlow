@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getPayment, validateWebhookSignature } from "@/lib/mercadopago/checkout";
 import { getOrder } from "@/lib/mercadopago/orders";
 import { finalizeCharge } from "@/lib/mercadopago/finalize";
+import { getAccessToken } from "@/lib/mercadopago/client";
 
 export async function POST(req: Request) {
   try {
@@ -37,7 +38,7 @@ export async function POST(req: Request) {
       if (!orderId || orderId === "undefined") {
         return NextResponse.json({ error: "Missing order ID" }, { status: 400 });
       }
-      const order = await getOrder(orderId);
+      const order = await getOrder(orderId, getAccessToken()); // TODO next task: tenant token
       const payment = order.transactions?.payments?.[0];
       if (order.status && payment?.id) {
         await finalizeCharge(orderId, {
@@ -60,7 +61,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const payment = await getPayment(paymentId);
+    const payment = await getPayment(paymentId, getAccessToken()); // TODO next task: tenant token
 
     if (payment.status !== "approved") {
       return NextResponse.json({ received: true, status: payment.status });
