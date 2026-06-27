@@ -1,16 +1,8 @@
 import { createHmac } from "crypto";
 
-const MP_BASE_URL = "https://api.mercadopago.com";
-
-function getAccessToken(): string {
-  const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
-  if (!token) throw new Error("MERCADOPAGO_ACCESS_TOKEN is not configured");
-  return token;
-}
-
-export async function getPayment(paymentId: string) {
-  const res = await fetch(`${MP_BASE_URL}/v1/payments/${paymentId}`, {
-    headers: { Authorization: `Bearer ${getAccessToken()}` },
+export async function getPayment(paymentId: string, accessToken: string) {
+  const res = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
   });
 
   if (!res.ok) {
@@ -31,7 +23,11 @@ export function validateWebhookSignature(
   dataId: string
 ): boolean {
   const secret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
-  if (!secret) return true;
+  if (!secret) {
+    // No secret configured: allow in dev/test for frictionless local work, but
+    // REJECT in production so an unconfigured deploy can't accept forged webhooks.
+    return process.env.NODE_ENV !== "production";
+  }
 
   const parts: Record<string, string> = {};
   for (const segment of xSignature.split(",")) {

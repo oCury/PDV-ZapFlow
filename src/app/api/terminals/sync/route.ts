@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { getTenantId } from "@/lib/tenant/context";
 import { listDevices, setOperatingMode } from "@/lib/mercadopago/devices";
+import { resolveMpAccessToken } from "@/lib/mercadopago/connection";
 import { mapMpErrorToOperatorMessage } from "@/lib/mercadopago/errors";
 
 export async function POST() {
@@ -10,10 +11,11 @@ export async function POST() {
   if (!admin) return NextResponse.json({ error: "Acesso negado." }, { status: 403 });
 
   try {
-    const devices = await listDevices();
     const tenantId = getTenantId();
+    const accessToken = await resolveMpAccessToken(tenantId);
+    const devices = await listDevices(accessToken);
     for (const device of devices) {
-      await setOperatingMode(device.id, "PDV").catch(() => {});
+      await setOperatingMode(device.id, "PDV", accessToken).catch(() => {});
       await prisma.paymentTerminal.upsert({
         where: { tenant_id_mp_device_id: { tenant_id: tenantId, mp_device_id: device.id } },
         update: { operating_mode: "PDV", last_seen_at: new Date(), status: "ONLINE" },
