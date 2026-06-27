@@ -20,7 +20,7 @@ function chargeMethodToPaymentMethod(method: TerminalChargeMethod): "CARD" | "PI
  * a no-op once the charge has reached a terminal state.
  *
  * Uses basePrisma (unscoped) — webhook has no user session.
- * TODO: make webhook fully tenant-aware when multi-MP-account support lands.
+ * Called inside runWithTenant() from the webhook; basePrisma lookup by globally-unique mp_order_id is intentional.
  */
 export async function finalizeCharge(orderId: string, input: FinalizeInput): Promise<void> {
   const charge = await basePrisma.terminalCharge.findFirst({
