@@ -68,12 +68,28 @@ export async function resolveMpAccessToken(tenantId: string): Promise<string> {
   const nearExpiry = expiresAt - Date.now() < REFRESH_BUFFER_MS;
 
   if (nearExpiry) {
-    const refreshed = await refreshTokens({ refreshToken: decryptSecret(conn.refresh_token) });
-    await basePrisma.mpConnection.update({
-      where: { tenant_id: tenantId },
-      data: connectionData(refreshed),
-    });
-    return refreshed.accessToken;
+    try {
+      const refreshed = await refreshTokens({ refreshToken: decryptSecret(conn.refresh_token) });
+      await basePrisma.mpConnection.update({
+        where: { tenant_id: tenantId },
+        data: connectionData(refreshed),
+      });
+      return refreshed.accessToken;
+    } catch (err) {
+      // A concurrent request may have already rotated the (single-use) refresh token.
+      // Re-read once: if the connection is now fresh, use it instead of failing.
+      const fresh = await basePrisma.mpConnection.findUnique({ where: { tenant_id: tenantId } });
+      if (
+        fresh &&
+        (fresh.access_token_expires_at?.getTime() ?? 0) - Date.now() >= REFRESH_BUFFER_MS
+      ) {
+        return decryptSecret(fresh.access_token);
+      }
+      console.error(
+        `[mp] token refresh failed for tenant ${tenantId}: ${err instanceof Error ? err.message : String(err)}`
+      );
+      throw new MpNotConnectedError(tenantId);
+    }
   }
 
   return decryptSecret(conn.access_token);

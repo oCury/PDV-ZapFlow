@@ -23,7 +23,11 @@ export function validateWebhookSignature(
   dataId: string
 ): boolean {
   const secret = process.env.MERCADOPAGO_WEBHOOK_SECRET;
-  if (!secret) return true;
+  if (!secret) {
+    // No secret configured: allow in dev/test for frictionless local work, but
+    // REJECT in production so an unconfigured deploy can't accept forged webhooks.
+    return process.env.NODE_ENV !== "production";
+  }
 
   const parts: Record<string, string> = {};
   for (const segment of xSignature.split(",")) {

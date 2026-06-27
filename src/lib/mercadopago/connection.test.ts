@@ -72,6 +72,37 @@ describe("resolveMpAccessToken", () => {
   });
 });
 
+describe("resolveMpAccessToken — refresh failure", () => {
+  const nearExpiryConn = {
+    tenant_id: "t1",
+    access_token: "enc(OLD_AT)",
+    refresh_token: "enc(OLD_RT)",
+    access_token_expires_at: new Date(Date.now() + 1000 * 60), // 1 min out → near expiry
+  };
+
+  it("throws MpNotConnectedError when refresh fails and the connection is still stale", async () => {
+    findUnique
+      .mockResolvedValueOnce(nearExpiryConn)
+      .mockResolvedValueOnce(nearExpiryConn); // re-read also stale
+    refreshMock.mockRejectedValue(new Error("MP OAuth token 401: bad_token"));
+    await expect(resolveMpAccessToken("t1")).rejects.toBeInstanceOf(MpNotConnectedError);
+  });
+
+  it("returns the concurrently-refreshed token when refresh fails but a re-read shows a fresh token", async () => {
+    const freshConn = {
+      tenant_id: "t1",
+      access_token: "enc(FRESH_AT)",
+      refresh_token: "enc(FRESH_RT)",
+      access_token_expires_at: new Date(Date.now() + 1000 * 60 * 60 * 72), // 72h out
+    };
+    findUnique
+      .mockResolvedValueOnce(nearExpiryConn)
+      .mockResolvedValueOnce(freshConn); // concurrent refresh already rotated the token
+    refreshMock.mockRejectedValue(new Error("MP OAuth token 400: invalid_grant"));
+    expect(await resolveMpAccessToken("t1")).toBe("FRESH_AT");
+  });
+});
+
 describe("saveConnection", () => {
   it("upserts an encrypted connection for the tenant", async () => {
     upsert.mockResolvedValue({});
