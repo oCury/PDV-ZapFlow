@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { getTenantId } from "@/lib/tenant/context";
 
 /**
  * GET /api/customers/search?phone=…&cpf=…&name=…&q=…
@@ -60,13 +61,15 @@ export async function GET(req: Request) {
       customers = await prisma.$queryRaw<CustomerResult[]>`
         SELECT id, name, phone, whatsapp, email, cpf, loyalty_points, created_at
         FROM "customers"
-        WHERE
-          REGEXP_REPLACE(phone, '[^0-9]', '', 'g') LIKE ${'%' + last9}
-          OR REGEXP_REPLACE(phone, '[^0-9]', '', 'g') LIKE ${'%' + last8}
-          OR REGEXP_REPLACE(whatsapp, '[^0-9]', '', 'g') LIKE ${'%' + last9}
-          OR REGEXP_REPLACE(whatsapp, '[^0-9]', '', 'g') LIKE ${'%' + last8}
-          OR REGEXP_REPLACE(phone, '[^0-9]', '', 'g') = ${phoneRaw}
-          OR REGEXP_REPLACE(whatsapp, '[^0-9]', '', 'g') = ${phoneRaw}
+        WHERE tenant_id = ${getTenantId()}
+          AND (
+            REGEXP_REPLACE(phone, '[^0-9]', '', 'g') LIKE ${'%' + last9}
+            OR REGEXP_REPLACE(phone, '[^0-9]', '', 'g') LIKE ${'%' + last8}
+            OR REGEXP_REPLACE(whatsapp, '[^0-9]', '', 'g') LIKE ${'%' + last9}
+            OR REGEXP_REPLACE(whatsapp, '[^0-9]', '', 'g') LIKE ${'%' + last8}
+            OR REGEXP_REPLACE(phone, '[^0-9]', '', 'g') = ${phoneRaw}
+            OR REGEXP_REPLACE(whatsapp, '[^0-9]', '', 'g') = ${phoneRaw}
+          )
         LIMIT 10
       `;
     }
@@ -77,7 +80,8 @@ export async function GET(req: Request) {
       customers = await prisma.$queryRaw<CustomerResult[]>`
         SELECT id, name, phone, whatsapp, email, cpf, loyalty_points, created_at
         FROM "customers"
-        WHERE LOWER(name) LIKE LOWER(${pattern})
+        WHERE tenant_id = ${getTenantId()}
+          AND LOWER(name) LIKE LOWER(${pattern})
         ORDER BY name ASC
         LIMIT 10
       `;
@@ -157,7 +161,8 @@ export async function POST(req: Request) {
     // First check if customer exists by normalized phone
     const existingByPhone = await prisma.$queryRaw<{ id: string }[]>`
       SELECT id FROM "customers"
-      WHERE REGEXP_REPLACE(phone, '[^0-9]', '', 'g') = ${phoneNormalized}
+      WHERE tenant_id = ${getTenantId()}
+        AND REGEXP_REPLACE(phone, '[^0-9]', '', 'g') = ${phoneNormalized}
       LIMIT 1
     `;
 

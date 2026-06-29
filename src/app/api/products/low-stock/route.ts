@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { getTenantId } from "@/lib/tenant/context";
 
 /**
  * GET /api/products/low-stock
@@ -43,6 +44,7 @@ export async function GET(request: NextRequest) {
         FROM   products
         WHERE  stock_quantity <= ${thresholdNum}
           AND  stock_quantity >= 0
+          AND  tenant_id = ${getTenantId()}
         ORDER  BY stock_quantity ASC
         LIMIT  50
       `;
@@ -64,6 +66,7 @@ export async function GET(request: NextRequest) {
         FROM   products
         WHERE  min_stock > 0
           AND  stock_quantity <= min_stock
+          AND  tenant_id = ${getTenantId()}
         ORDER  BY (stock_quantity::float / NULLIF(min_stock, 0)) ASC
         LIMIT  20
       `;

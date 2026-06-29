@@ -12,6 +12,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import { getTenantId } from "@/lib/tenant/context";
 import type {
   NfcePayload,
   FiscalApiResponse,
@@ -71,9 +72,9 @@ export class FiscalService {
    */
   static async getNextNumber(series: number = 1): Promise<number> {
     const result = await prisma.$queryRaw<{ last_number: number }[]>`
-      INSERT INTO fiscal_sequences (id, series, last_number)
-      VALUES (gen_random_uuid(), ${series}, 1)
-      ON CONFLICT (series)
+      INSERT INTO fiscal_sequences (id, tenant_id, series, last_number)
+      VALUES (gen_random_uuid(), ${getTenantId()}, ${series}, 1)
+      ON CONFLICT (tenant_id, series)
       DO UPDATE SET last_number = fiscal_sequences.last_number + 1
       RETURNING last_number
     `;
