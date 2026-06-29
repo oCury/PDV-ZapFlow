@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
-import { getTenantId } from "@/lib/tenant/context";
+import { resolveTenantId } from "@/lib/tenant/resolve-tenant";
 import { listDevices, setOperatingMode } from "@/lib/mercadopago/devices";
 import { mapMpErrorToOperatorMessage } from "@/lib/mercadopago/errors";
 
@@ -11,7 +11,7 @@ export async function POST() {
 
   try {
     const devices = await listDevices();
-    const tenantId = getTenantId();
+    const tenantId = await resolveTenantId();
     for (const device of devices) {
       await setOperatingMode(device.id, "PDV").catch(() => {});
       await prisma.paymentTerminal.upsert({

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { getTenantId } from "@/lib/tenant/context";
+import { resolveTenantId } from "@/lib/tenant/resolve-tenant";
 
 /**
  * GET /api/customers/search?phone=…&cpf=…&name=…&q=…
@@ -51,6 +51,7 @@ export async function GET(req: Request) {
       created_at: Date;
     };
 
+    const tenantId = await resolveTenantId();
     let customers: CustomerResult[] = [];
 
     // Phone search
@@ -61,7 +62,7 @@ export async function GET(req: Request) {
       customers = await prisma.$queryRaw<CustomerResult[]>`
         SELECT id, name, phone, whatsapp, email, cpf, loyalty_points, created_at
         FROM "customers"
-        WHERE tenant_id = ${getTenantId()}
+        WHERE tenant_id = ${tenantId}
           AND (
             REGEXP_REPLACE(phone, '[^0-9]', '', 'g') LIKE ${'%' + last9}
             OR REGEXP_REPLACE(phone, '[^0-9]', '', 'g') LIKE ${'%' + last8}
@@ -80,7 +81,7 @@ export async function GET(req: Request) {
       customers = await prisma.$queryRaw<CustomerResult[]>`
         SELECT id, name, phone, whatsapp, email, cpf, loyalty_points, created_at
         FROM "customers"
-        WHERE tenant_id = ${getTenantId()}
+        WHERE tenant_id = ${tenantId}
           AND LOWER(name) LIKE LOWER(${pattern})
         ORDER BY name ASC
         LIMIT 10
@@ -157,11 +158,12 @@ export async function POST(req: Request) {
     // Normalize phone number (remove non-digits)
     const phoneNormalized = phone.replace(/\D/g, "");
     const whatsappNormalized = whatsapp ? whatsapp.replace(/\D/g, "") : undefined;
+    const tenantId = await resolveTenantId();
 
     // First check if customer exists by normalized phone
     const existingByPhone = await prisma.$queryRaw<{ id: string }[]>`
       SELECT id FROM "customers"
-      WHERE tenant_id = ${getTenantId()}
+      WHERE tenant_id = ${tenantId}
         AND REGEXP_REPLACE(phone, '[^0-9]', '', 'g') = ${phoneNormalized}
       LIMIT 1
     `;

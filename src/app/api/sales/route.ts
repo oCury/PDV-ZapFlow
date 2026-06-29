@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { getTenantId } from "@/lib/tenant/context";
+import { resolveTenantId } from "@/lib/tenant/resolve-tenant";
 import { createSaleSchema } from "@/lib/validations/pos";
 import { redeemVoucher, getVoucherByCode } from "@/lib/vouchers/service";
 
@@ -297,6 +297,7 @@ export async function POST(req: Request) {
     }
 
     // ── M2: Check which items hit their min_stock threshold ───────────────
+    const tenantId = await resolveTenantId();
     const alertProductIds = items.filter((i) => !i.variantId).map((i) => i.productId);
     const alertVariantIds = items.filter((i) => i.variantId).map((i) => i.variantId!);
 
@@ -311,7 +312,7 @@ export async function POST(req: Request) {
         WHERE  id = ANY(${alertProductIds}::text[])
           AND  min_stock > 0
           AND  stock_quantity <= min_stock
-          AND  tenant_id = ${getTenantId()}
+          AND  tenant_id = ${tenantId}
       `;
       stockAlerts.push(...productAlerts.map((p) => ({
         id: p.id,
@@ -331,7 +332,7 @@ export async function POST(req: Request) {
         WHERE  pv.id = ANY(${alertVariantIds}::text[])
           AND  pv.min_stock > 0
           AND  pv.stock_quantity <= pv.min_stock
-          AND  pv.tenant_id = ${getTenantId()}
+          AND  pv.tenant_id = ${tenantId}
       `;
       stockAlerts.push(...variantAlerts.map((v) => ({
         id: v.id,

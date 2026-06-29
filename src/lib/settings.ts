@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { getTenantId } from "@/lib/tenant/context";
+import { resolveTenantId } from "@/lib/tenant/resolve-tenant";
 
 const DEFAULTS: Record<string, string> = {
   followup_days: "15",
@@ -28,7 +28,7 @@ export async function getNumericSetting(key: string): Promise<number> {
  * Set (upsert) a single setting.
  */
 export async function setSetting(key: string, value: string): Promise<void> {
-  const tenant_id = getTenantId();
+  const tenant_id = await resolveTenantId();
   await prisma.storeSettings.upsert({
     where: { tenant_id_key: { tenant_id, key } },
     update: { value },

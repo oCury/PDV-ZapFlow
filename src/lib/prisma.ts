@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { getTenantId } from "./tenant/context";
+import { resolveTenantId } from "./tenant/resolve-tenant";
 import { applyTenantScope, TENANT_MODELS } from "./tenant/scope";
 
 /**
@@ -22,11 +22,8 @@ function makeTenantPrisma(client: PrismaClient) {
       $allModels: {
         async $allOperations({ model, operation, args, query }) {
           if (!model || !TENANT_MODELS.has(model)) return query(args);
-          const scoped = applyTenantScope(
-            operation,
-            (args ?? {}) as Record<string, unknown>,
-            getTenantId()
-          );
+          const tenantId = await resolveTenantId();
+          const scoped = applyTenantScope(operation, (args ?? {}) as Record<string, unknown>, tenantId);
           return query(scoped as typeof args);
         },
       },

@@ -12,7 +12,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { getTenantId } from "@/lib/tenant/context";
+import { resolveTenantId } from "@/lib/tenant/resolve-tenant";
 import type {
   NfcePayload,
   FiscalApiResponse,
@@ -71,9 +71,10 @@ export class FiscalService {
    * Atomically get and increment the next NFC-e number for the given series.
    */
   static async getNextNumber(series: number = 1): Promise<number> {
+    const tenantId = await resolveTenantId();
     const result = await prisma.$queryRaw<{ last_number: number }[]>`
       INSERT INTO fiscal_sequences (id, tenant_id, series, last_number)
-      VALUES (gen_random_uuid(), ${getTenantId()}, ${series}, 1)
+      VALUES (gen_random_uuid(), ${tenantId}, ${series}, 1)
       ON CONFLICT (tenant_id, series)
       DO UPDATE SET last_number = fiscal_sequences.last_number + 1
       RETURNING last_number

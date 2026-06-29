@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { enterTenant } from "./tenant/context";
 import { basePrisma } from "./prisma";
 
-const SESSION_COOKIE = "zf_session";
+export const SESSION_COOKIE = "zf_session";
 
 function getSecret(): string {
   const s = process.env.SESSION_SECRET;
@@ -85,7 +85,6 @@ export async function getSession(): Promise<SessionPayload | null> {
   const token = cookieStore.get(SESSION_COOKIE)?.value;
   if (!token) return null;
   const session = parseSessionToken(token);
-  if (session?.tenantId) enterTenant(session.tenantId);
   return session;
 }
 
