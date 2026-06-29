@@ -81,7 +81,9 @@ export async function getSession(): Promise<SessionPayload | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
   if (!token) return null;
-  return parseSessionToken(token);
+  const session = parseSessionToken(token);
+  if (session?.tenantId) enterTenant(session.tenantId);
+  return session;
 }
 
 export async function getSessionUser() {
