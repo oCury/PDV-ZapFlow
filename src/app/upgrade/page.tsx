@@ -13,7 +13,7 @@ const FEATURE_LABELS: Record<string, string> = {
   multistore: "Multi-loja",
 };
 
-const WHATSAPP_URL = "https://wa.me/55999999999"; // TODO(business): replace with the real sales number
+const WHATSAPP_URL = "https://wa.me/5513997164200";
 
 export default async function UpgradePage({
   searchParams,
