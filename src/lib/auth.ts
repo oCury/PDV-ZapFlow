@@ -20,7 +20,9 @@ export function hashPassword(password: string): string {
 }
 
 export function verifyPassword(password: string, stored: string): boolean {
-  const [salt, hash] = stored.split(":");
+  const parts = stored.split(":");
+  if (parts.length !== 2 || !parts[0] || !parts[1]) return false;
+  const [salt, hash] = parts;
   const hashBuffer = Buffer.from(hash, "hex");
   const derivedBuffer = scryptSync(password, salt, 64);
   return timingSafeEqual(hashBuffer, derivedBuffer);
@@ -55,7 +57,8 @@ export function parseSessionToken(token: string): SessionPayload | null {
   if (actual.length * 2 !== signature.length || expected.length !== actual.length || !timingSafeEqual(expected, actual)) return null;
   try {
     return JSON.parse(Buffer.from(payload, "base64url").toString());
-  } catch {
+  } catch (e) {
+    console.warn("[auth] parseSessionToken: payload decode failed", e);
     return null;
   }
 }

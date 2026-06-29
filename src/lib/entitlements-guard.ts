@@ -17,7 +17,8 @@ export const currentPlan = cache(async (): Promise<Plan | null> => {
     where: { id: session.tenantId },
     select: { plan: true },
   });
-  return planFromTenant(t?.plan ?? null);
+  if (!t) return null; // tenant deleted but session still valid → deny
+  return planFromTenant(t.plan);
 });
 
 /** API guard: returns a NextResponse (401/403) on failure, or null to continue. */

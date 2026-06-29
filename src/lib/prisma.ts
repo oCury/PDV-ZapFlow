@@ -8,7 +8,7 @@ import { applyTenantScope, TENANT_MODELS } from "./tenant/scope";
  */
 function getDatabaseUrl(): string {
   const url = process.env.DATABASE_URL ?? "";
-  if (!url) return url;
+  if (!url) throw new Error("DATABASE_URL environment variable is required");
   if (url.includes("6543") && !url.includes("pgbouncer=true")) {
     const sep = url.includes("?") ? "&" : "?";
     return `${url}${sep}pgbouncer=true`;

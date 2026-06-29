@@ -26,7 +26,8 @@ export async function GET() {
           }
         : null,
     });
-  } catch {
+  } catch (error) {
+    console.error("[CashRegister] GET failed:", error);
     return NextResponse.json(
       { error: "Error fetching cash register status" },
       { status: 500 }

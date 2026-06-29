@@ -28,6 +28,11 @@ describe("currentPlan", () => {
     findUnique.mockResolvedValue({ plan: null });
     expect(await currentPlan()).toBe("basic");
   });
+  it("returns null when tenant row is missing (deleted tenant with live session)", async () => {
+    getSession.mockResolvedValue({ tenantId: "t1" });
+    findUnique.mockResolvedValue(null);
+    expect(await currentPlan()).toBeNull();
+  });
 });
 
 describe("requireEntitlement", () => {

@@ -37,7 +37,9 @@ export const PLAN_LIMITS: Record<Plan, { seats: number | null }> = {
 
 /** Normalize a raw plan value (DB enum/string) to a Plan; null/unknown → basic (fail-closed). */
 export function planFromTenant(plan: string | null | undefined): Plan {
-  return plan === "pro" || plan === "enterprise" ? plan : "basic";
+  if (plan === "pro" || plan === "enterprise") return plan;
+  if (plan != null && plan !== "basic") console.warn(`planFromTenant: unrecognized plan "${plan}" -> basic`);
+  return "basic";
 }
 export function hasEntitlement(plan: Plan, key: EntitlementKey): boolean {
   return PLAN_ENTITLEMENTS[plan].has(key);
