@@ -5,8 +5,12 @@ import { getNumericSetting } from "@/lib/settings";
 import { validateInstallments } from "@/lib/mercadopago/amount";
 import { createTerminalOrder } from "@/lib/mercadopago/orders";
 import { mapMpErrorToOperatorMessage } from "@/lib/mercadopago/errors";
+import { getSession } from "@/lib/auth";
 
 export async function POST(req: Request) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+
   const parsed = terminalChargeSchema.safeParse(await req.json());
   if (!parsed.success) {
     return NextResponse.json({ error: "Dados da cobrança inválidos" }, { status: 400 });

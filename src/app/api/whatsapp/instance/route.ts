@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import evolutionAPI from "@/lib/whatsapp/evolution-api";
 import { requireEntitlement } from "@/lib/entitlements-guard";
+import { getSession } from "@/lib/auth";
 
 /**
  * GET /api/whatsapp/instance
@@ -8,6 +9,9 @@ import { requireEntitlement } from "@/lib/entitlements-guard";
  */
 export async function GET() {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+
     const gate = await requireEntitlement("whatsapp");
     if (gate) return gate;
 
@@ -97,6 +101,9 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+
     const gate = await requireEntitlement("whatsapp");
     if (gate) return gate;
 
@@ -189,6 +196,9 @@ export async function POST(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+
     const gate = await requireEntitlement("whatsapp");
     if (gate) return gate;
 

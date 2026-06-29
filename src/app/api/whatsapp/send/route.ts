@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import evolutionAPI from "@/lib/whatsapp/evolution-api";
 import { z } from "zod";
 import { requireEntitlement } from "@/lib/entitlements-guard";
+import { getSession } from "@/lib/auth";
 
 const sendMessageSchema = z.object({
   number: z.string().min(10, "Número inválido"),
@@ -15,6 +16,9 @@ const sendMessageSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+
     const gate = await requireEntitlement("whatsapp");
     if (gate) return gate;
 

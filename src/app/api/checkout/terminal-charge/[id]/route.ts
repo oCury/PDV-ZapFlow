@@ -2,8 +2,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getOrder } from "@/lib/mercadopago/orders";
 import { finalizeCharge } from "@/lib/mercadopago/finalize";
+import { getSession } from "@/lib/auth";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+
   const { id } = await params;
   const charge = await prisma.terminalCharge.findUnique({ where: { id } });
   if (!charge) return NextResponse.json({ error: "Cobrança não encontrada" }, { status: 404 });

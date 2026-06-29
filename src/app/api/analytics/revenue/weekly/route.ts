@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/auth";
 
 export async function GET() {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+
   const today = new Date();
   const last7Days = new Date();
   last7Days.setDate(today.getDate() - 7);

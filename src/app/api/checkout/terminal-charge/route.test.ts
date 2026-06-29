@@ -9,6 +9,7 @@ const prismaMock = vi.hoisted(() => ({
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
 vi.mock("@/lib/settings", () => ({ getNumericSetting: vi.fn(async () => 6) }));
 vi.mock("@/lib/mercadopago/orders", () => ({ createTerminalOrder: vi.fn() }));
+vi.mock("@/lib/auth", () => ({ getSession: vi.fn(async () => ({ userId: "u1", tenantId: "t1" })) }));
 
 import { POST } from "./route";
 import { createTerminalOrder } from "@/lib/mercadopago/orders";

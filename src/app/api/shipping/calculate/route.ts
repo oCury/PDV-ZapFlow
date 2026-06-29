@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireEntitlement } from "@/lib/entitlements-guard";
+import { getSession } from "@/lib/auth";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -125,6 +126,9 @@ async function fetchExternalShipping(
 
 export async function POST(req: Request) {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+
     const gate = await requireEntitlement("deliveries");
     if (gate) return gate;
 

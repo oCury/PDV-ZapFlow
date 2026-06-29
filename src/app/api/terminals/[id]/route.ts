@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { updateTerminalSchema } from "@/lib/validations/terminal";
+import { getSession } from "@/lib/auth";
 
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+
   const { id } = await params;
   const parsed = updateTerminalSchema.safeParse(await req.json());
   if (!parsed.success) {
