@@ -13,6 +13,8 @@
     "db:seed": "prisma db seed",
     "tenant:backfill": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/backfill-tenant.ts",
     "tenant:create": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/create-tenant.ts",
+    "tenant:list": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/list-tenants.ts",
+    "tenant:set-plan": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/set-tenant-plan.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test"
