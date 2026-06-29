@@ -7,6 +7,7 @@ const redirect = vi.fn((url: string) => { throw new Error(`REDIRECT:${url}`); })
 vi.mock("@/lib/auth", () => ({ getSession: () => getSession() }));
 vi.mock("@/lib/prisma", () => ({ basePrisma: { tenant: { findUnique: (a: unknown) => findUnique(a) } } }));
 vi.mock("next/navigation", () => ({ redirect: (u: string) => redirect(u) }));
+vi.mock("react", () => ({ cache: <T>(fn: T) => fn }));
 
 import { currentPlan, requireEntitlement, requireEntitlementPage } from "./entitlements-guard";
 
@@ -40,6 +41,8 @@ describe("requireEntitlement", () => {
     findUnique.mockResolvedValue({ plan: "basic" });
     const res = await requireEntitlement("whatsapp");
     expect(res?.status).toBe(403);
+    const body = await res?.json();
+    expect(body).toEqual({ success: false, error: "Recurso indisponível no seu plano", upgrade: true });
   });
   it("null (pass) when plan has the key", async () => {
     getSession.mockResolvedValue({ tenantId: "t1" });
@@ -49,6 +52,10 @@ describe("requireEntitlement", () => {
 });
 
 describe("requireEntitlementPage", () => {
+  it("redirects to /login when unauthenticated", async () => {
+    getSession.mockResolvedValue(null);
+    await expect(requireEntitlementPage("fiscal.nfce")).rejects.toThrow("REDIRECT:/login");
+  });
   it("redirects to /upgrade when plan lacks the key", async () => {
     getSession.mockResolvedValue({ tenantId: "t1" });
     findUnique.mockResolvedValue({ plan: "basic" });

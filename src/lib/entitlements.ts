@@ -12,16 +12,16 @@ export type EntitlementKey =
   | "reports.advanced"
   | "multistore";
 
-const BASIC_KEYS: EntitlementKey[] = [
+const BASIC_KEYS: readonly EntitlementKey[] = [
   "pdv", "catalog", "inventory", "payments.core", "payments.terminal",
   "customers", "cashregister", "reports.basic",
 ];
-const PRO_KEYS: EntitlementKey[] = [
+const PRO_KEYS: readonly EntitlementKey[] = [
   ...BASIC_KEYS,
   "payments.installments", "fiscal.nfce", "whatsapp", "loyalty",
   "vouchers", "commissions", "deliveries", "labels", "tables", "reports.advanced",
 ];
-const ENTERPRISE_KEYS: EntitlementKey[] = [...PRO_KEYS, "multistore"];
+const ENTERPRISE_KEYS: readonly EntitlementKey[] = [...PRO_KEYS, "multistore"];
 
 export const PLAN_ENTITLEMENTS: Record<Plan, ReadonlySet<EntitlementKey>> = {
   basic: new Set(BASIC_KEYS),

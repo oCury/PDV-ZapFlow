@@ -46,5 +46,6 @@ describe("entitlements config", () => {
     expect(allowedKeys("basic")).toContain("pdv");
     expect(allowedKeys("basic")).not.toContain("fiscal.nfce");
     expect(allowedKeys("enterprise")).toContain("multistore");
+    expect(new Set(allowedKeys("pro"))).toEqual(PLAN_ENTITLEMENTS.pro);
   });
 });

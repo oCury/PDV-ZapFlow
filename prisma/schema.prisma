@@ -44,6 +44,9 @@ enum UserRole {
   EMPLOYEE
 }
 
+// Lowercase values are intentional: they match planFromTenant()/Plan union in
+// src/lib/entitlements.ts, avoiding a string-translation layer. Backfill + cast
+// handled at rollout (see docs/superpowers/plans/2026-06-29-entitlements-layer.md Task 12).
 enum Plan {
   basic
   pro
