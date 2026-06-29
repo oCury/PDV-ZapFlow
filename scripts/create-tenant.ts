@@ -34,23 +34,25 @@ async function main() {
   }
   const plan = planArg as (typeof PLANS)[number];
 
-  const tenant = await prisma.tenant.create({ data: { name, slug, plan } });
-  const user = await prisma.user.create({
-    data: {
-      name: "Administrador",
-      email,
-      password: hashPassword(password),
-      role: "ADMIN",
-      tenant_id: tenant.id,
-    },
-  });
+  await prisma.$transaction(async (tx) => {
+    const tenant = await tx.tenant.create({ data: { name, slug, plan } });
+    const user = await tx.user.create({
+      data: {
+        name: "Administrador",
+        email,
+        password: hashPassword(password),
+        role: "ADMIN",
+        tenant_id: tenant.id,
+      },
+    });
 
-  console.log(`Tenant ${tenant.slug} (${tenant.id})`);
-  console.log(`Admin ${user.email} (${user.id})`);
+    console.log(`Tenant ${tenant.slug} (${tenant.id})`);
+    console.log(`Admin ${user.email} (${user.id})`);
+  });
 }
 
 main()
-  .then(() => prisma.$disconnect())
+  .then(async () => { await prisma.$disconnect(); process.exit(0); })
   .catch(async (e) => {
     console.error(e);
     await prisma.$disconnect();
