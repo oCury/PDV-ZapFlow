@@ -25,7 +25,9 @@ import {
   Tag,
   Truck,
   BarChart3,
+  Lock,
 } from "lucide-react";
+import type { EntitlementKey } from "@/lib/entitlements";
 import { useState, useEffect, useRef } from "react";
 
 interface NavItem {
@@ -33,25 +35,26 @@ interface NavItem {
   label: string;
   icon: typeof LayoutDashboard;
   adminOnly: boolean;
+  entitlement?: EntitlementKey;
 }
 
 const navItems: NavItem[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard, adminOnly: true },
   { href: "/pdv", label: "PDV", icon: ShoppingCart, adminOnly: false },
-  { href: "/tables", label: "Mesas", icon: UtensilsCrossed, adminOnly: false },
-  { href: "/entregas", label: "Entregas", icon: Truck, adminOnly: false },
+  { href: "/tables", label: "Mesas", icon: UtensilsCrossed, adminOnly: false, entitlement: "tables" },
+  { href: "/entregas", label: "Entregas", icon: Truck, adminOnly: false, entitlement: "deliveries" },
   { href: "/products", label: "Produtos", icon: Package, adminOnly: false },
   { href: "/categories", label: "Categorias", icon: FolderTree, adminOnly: true },
   { href: "/customers", label: "Clientes", icon: UserCheck, adminOnly: true },
-  { href: "/cashback", label: "Cashback", icon: Gift, adminOnly: true },
+  { href: "/cashback", label: "Cashback", icon: Gift, adminOnly: true, entitlement: "loyalty" },
   { href: "/sales", label: "Vendas", icon: Receipt, adminOnly: true },
-  { href: "/exchanges", label: "Trocas", icon: ArrowLeftRight, adminOnly: true },
-  { href: "/vouchers", label: "Vales", icon: Ticket, adminOnly: true },
-  { href: "/commissions", label: "Comissões", icon: Percent, adminOnly: true },
-  { href: "/labels", label: "Etiquetas", icon: Tag, adminOnly: true },
-  { href: "/reports", label: "Relatórios", icon: BarChart3, adminOnly: true },
-  { href: "/fiscal", label: "Fiscal", icon: FileText, adminOnly: true },
-  { href: "/followups", label: "Follow-up", icon: MessageCircle, adminOnly: true },
+  { href: "/exchanges", label: "Trocas", icon: ArrowLeftRight, adminOnly: true, entitlement: "vouchers" },
+  { href: "/vouchers", label: "Vales", icon: Ticket, adminOnly: true, entitlement: "vouchers" },
+  { href: "/commissions", label: "Comissões", icon: Percent, adminOnly: true, entitlement: "commissions" },
+  { href: "/labels", label: "Etiquetas", icon: Tag, adminOnly: true, entitlement: "labels" },
+  { href: "/reports", label: "Relatórios", icon: BarChart3, adminOnly: true, entitlement: "reports.advanced" },
+  { href: "/fiscal", label: "Fiscal", icon: FileText, adminOnly: true, entitlement: "fiscal.nfce" },
+  { href: "/followups", label: "Follow-up", icon: MessageCircle, adminOnly: true, entitlement: "whatsapp" },
   { href: "/staff", label: "Equipe", icon: Users, adminOnly: true },
   { href: "/settings", label: "Configurações", icon: Settings, adminOnly: true },
 ];
@@ -59,6 +62,7 @@ const navItems: NavItem[] = [
 interface UserInfo {
   name: string;
   role: "ADMIN" | "EMPLOYEE";
+  entitlements: EntitlementKey[];
 }
 
 export function Sidebar() {
@@ -86,8 +90,12 @@ export function Sidebar() {
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.user) {
-          setUser(data.user);
-          try { sessionStorage.setItem("sidebar_user", JSON.stringify(data.user)); } catch { /* intentionally ignored — sessionStorage may be unavailable */ }
+          const userInfo: UserInfo = {
+            ...data.user,
+            entitlements: data.entitlements ?? [],
+          };
+          setUser(userInfo);
+          try { sessionStorage.setItem("sidebar_user", JSON.stringify(userInfo)); } catch { /* intentionally ignored — sessionStorage may be unavailable */ }
         }
       })
       .catch(() => {});
@@ -103,6 +111,10 @@ export function Sidebar() {
   const visibleItems = navItems.filter(
     (item) => !item.adminOnly || user?.role === "ADMIN"
   );
+
+  const entitlements = user?.entitlements ?? [];
+  const isLocked = (item: NavItem) =>
+    !!item.entitlement && !entitlements.includes(item.entitlement);
 
   return (
     <aside
@@ -126,13 +138,18 @@ export function Sidebar() {
 
       <nav className="flex-1 py-4 space-y-1 px-2">
         {visibleItems.map((item) => {
-          const isActive = pathname === item.href;
+          const locked = isLocked(item);
+          const isActive = !locked && pathname === item.href;
+          const href = locked ? `/upgrade?feature=${item.entitlement}` : item.href;
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={href}
+              title={locked ? "Disponível em um plano superior" : undefined}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group ${
-                isActive
+                locked
+                  ? "opacity-50 text-gray-400 hover:text-pure-white hover:bg-white/5"
+                  : isActive
                   ? "bg-brand-green text-primary-dark font-semibold"
                   : "text-gray-400 hover:text-pure-white hover:bg-white/5"
               }`}
@@ -146,6 +163,9 @@ export function Sidebar() {
                 }
               />
               {!collapsed && <span className="text-sm">{item.label}</span>}
+              {!collapsed && locked && (
+                <Lock size={14} className="ml-auto opacity-70" />
+              )}
             </Link>
           );
         })}
