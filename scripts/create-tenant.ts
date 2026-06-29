@@ -1,6 +1,7 @@
-// Usage: npm run tenant:create -- --name "Loja X" --slug loja-x --email admin@lojax.com --password secret123
+// Usage: npm run tenant:create -- --name "Loja X" --slug loja-x --email admin@lojax.com --password secret123 --plan <basic|pro|enterprise> (optional, default basic)
 import { PrismaClient } from "@prisma/client";
 import { randomBytes, scryptSync } from "crypto";
+import { PLANS } from "../src/lib/entitlements";
 
 const prisma = new PrismaClient();
 
@@ -26,7 +27,14 @@ async function main() {
     process.exit(1);
   }
 
-  const tenant = await prisma.tenant.create({ data: { name, slug } });
+  const planArg = (arg("--plan") ?? "basic").toLowerCase();
+  if (!(PLANS as readonly string[]).includes(planArg)) {
+    console.error(`Invalid --plan "${planArg}". Use one of: ${PLANS.join(", ")}`);
+    process.exit(1);
+  }
+  const plan = planArg as (typeof PLANS)[number];
+
+  const tenant = await prisma.tenant.create({ data: { name, slug, plan } });
   const user = await prisma.user.create({
     data: {
       name: "Administrador",
