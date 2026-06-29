@@ -137,29 +137,40 @@ export function seatLimit(plan: Plan): number | null {
 ## 4. Plan-Source Plumbing
 
 Entitlement checks need the current tenant's plan. The session cookie
-(`{ userId, role, name, tenantId }`) deliberately does **not** carry the plan
-(would go stale on a future billing-driven change).
+(`{ userId, role, name, tenantId }`) carries the `tenantId` but deliberately does
+**not** carry the plan (would go stale on a future billing-driven change).
 
-**`getCurrentTenant()`** — new helper, `cache()`-memoized per request:
+**Tenant source = the session cookie's `tenantId`, not ambient `getTenantId()`.**
+Most API routes call bare `getSession()` (cookie parse) and do **not** call
+`enterTenant()`, so the `AsyncLocalStorage` tenant context is not reliably set in a
+route handler. (Today this is masked by there being one live tenant; it's a separate
+latent concern, out of scope here.) Reading `tenantId` straight from the verified,
+HMAC-signed session cookie is reliable in **every** route and page.
+
+**`currentPlan()`** — new helper, `cache()`-memoized per request:
 
 ```ts
 import { cache } from "react";
+import { getSession } from "@/lib/auth";
 import { basePrisma } from "@/lib/prisma";
-import { getTenantId } from "@/lib/tenant/context";
 import { planFromTenant, type Plan } from "@/lib/entitlements";
 
-export const getCurrentTenant = cache(async (): Promise<{ id: string; name: string; plan: Plan }> => {
-  const id = getTenantId();
-  const t = await basePrisma.tenant.findUnique({ where: { id }, select: { id: true, name: true, plan: true } });
-  if (!t) throw new Error("Tenant not found for current context");
-  return { id: t.id, name: t.name, plan: planFromTenant(t.plan) };
+/** The current tenant's plan from the session cookie, or null if unauthenticated. */
+export const currentPlan = cache(async (): Promise<Plan | null> => {
+  const session = await getSession();
+  if (!session?.tenantId) return null;
+  const t = await basePrisma.tenant.findUnique({
+    where: { id: session.tenantId },
+    select: { plan: true },
+  });
+  return planFromTenant(t?.plan ?? null);
 });
 ```
 
-- Uses `basePrisma` (unscoped) — `Tenant` is not a tenant-owned model.
+- Uses `basePrisma` (unscoped) — `Tenant` is not a tenant-owned model — and a PK lookup.
 - Fresh per request → a future C1 webhook plan-flip takes effect with no re-login.
-- `getSessionUser()` is extended to join the tenant's `plan` in its existing user
-  lookup, so the common authenticated path incurs no extra query.
+- `cache()` dedupes the read when both a page guard and `/api/auth/me` resolve it in
+  the same request. No change to `getSessionUser()` is required (YAGNI).
 
 ---
 
@@ -169,9 +180,10 @@ export const getCurrentTenant = cache(async (): Promise<{ id: string; name: stri
 `requireEntitlement(key)` runs after the route's existing auth check:
 
 ```ts
-// returns a NextResponse (403) on failure, or null on pass
+// returns a NextResponse on failure (401/403), or null on pass
 export async function requireEntitlement(key: EntitlementKey): Promise<NextResponse | null> {
-  const { plan } = await getCurrentTenant();
+  const plan = await currentPlan();
+  if (!plan) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   if (!hasEntitlement(plan, key)) {
     return NextResponse.json(
       { success: false, error: "Recurso indisponível no seu plano", upgrade: true },
@@ -217,8 +229,8 @@ At user creation — `src/app/api/staff/route.ts` (`POST`, the `prisma.user.crea
 at line ~52):
 
 ```ts
-const { plan } = await getCurrentTenant();
-const limit = seatLimit(plan);
+const plan = await currentPlan(); // staff route uses requireAdmin → tenant context is set
+const limit = seatLimit(plan ?? "basic");
 if (limit !== null) {
   const count = await prisma.user.count({ where: { active: true } }); // auto-scoped to tenant
   if (count >= limit) {
@@ -264,9 +276,7 @@ A lightweight `/upgrade` page (server component):
 |---|---|
 | `prisma/schema.prisma` | `enum Plan`; `Tenant.plan Plan?` |
 | `src/lib/entitlements.ts` | **new** — matrix as code + helpers |
-| `src/lib/tenant/current-tenant.ts` | **new** — `getCurrentTenant()` (`cache()`) |
-| `src/lib/auth.ts` | `getSessionUser()` joins tenant `plan` |
-| `src/lib/entitlements-guard.ts` | **new** — `requireEntitlement`, `requireEntitlementPage` |
+| `src/lib/entitlements-guard.ts` | **new** — `currentPlan()` (`cache()`), `requireEntitlement`, `requireEntitlementPage` |
 | `src/app/api/auth/me/route.ts` | return `plan` + `entitlements[]` |
 | `src/components/sidebar.tsx`, `bottom-nav.tsx` | `entitlement` on nav items + locked rendering |
 | protected `src/app/api/*/route.ts` (~10) | inline `requireEntitlement(key)` |
