@@ -11,7 +11,7 @@ model Tenant {
   id            String        @id @default(cuid())
   name          String
   slug          String        @unique
-  plan          String?
+  plan          Plan?
   active        Boolean       @default(true)
   created_at    DateTime      @default(now())
   updated_at    DateTime      @updatedAt
@@ -42,6 +42,12 @@ model MpConnection {
 enum UserRole {
   ADMIN
   EMPLOYEE
+}
+
+enum Plan {
+  basic
+  pro
+  enterprise
 }
 
 model User {
