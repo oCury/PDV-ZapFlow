@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { cancelNfceSchema } from "@/lib/validations/fiscal";
 import { FiscalService } from "@/lib/fiscal/FiscalService";
+import { requireEntitlement } from "@/lib/entitlements-guard";
 
 export async function POST(
   req: Request,
@@ -12,6 +13,9 @@ export async function POST(
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const gate = await requireEntitlement("fiscal.nfce");
+  if (gate) return gate;
 
   const { saleId } = await params;
 

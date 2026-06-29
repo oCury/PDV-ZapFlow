@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { generateLabelsSchema, type LabelItemData } from "@/lib/validations/labels";
+import { requireEntitlement } from "@/lib/entitlements-guard";
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,6 +10,9 @@ export async function POST(request: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
+
+    const gate = await requireEntitlement("labels");
+    if (gate) return gate;
 
     const body = await request.json();
     const parsed = generateLabelsSchema.safeParse(body);

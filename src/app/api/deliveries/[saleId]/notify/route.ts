@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { z } from "zod";
 import evolutionAPI from "@/lib/whatsapp/evolution-api";
+import { requireEntitlement } from "@/lib/entitlements-guard";
 
 const notifySchema = z.object({
   message: z.string().min(1, "Mensagem é obrigatória").max(1000),
@@ -21,6 +22,9 @@ export async function POST(
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const gate = await requireEntitlement("deliveries");
+    if (gate) return gate;
 
     if (!evolutionAPI.isConfigured()) {
       return NextResponse.json(

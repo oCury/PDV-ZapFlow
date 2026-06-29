@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { getSetting, setSetting } from "@/lib/settings";
 import { labelTemplateSchema } from "@/lib/validations/labels";
 import { PREDEFINED_TEMPLATES } from "@/lib/labels/generator";
+import { requireEntitlement } from "@/lib/entitlements-guard";
 
 const SETTINGS_KEY = "label_templates";
 
@@ -22,6 +23,9 @@ interface StoredTemplates {
 
 export async function GET() {
   try {
+    const gate = await requireEntitlement("labels");
+    if (gate) return gate;
+
     const raw = await getSetting(SETTINGS_KEY);
     let stored: StoredTemplates = {};
 
@@ -51,6 +55,9 @@ export async function PUT(request: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
+
+    const gate = await requireEntitlement("labels");
+    if (gate) return gate;
 
     const body = await request.json();
     const parsed = labelTemplateSchema.safeParse(body);

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
+import { requireEntitlement } from "@/lib/entitlements-guard";
 
 const DELIVERY_METHODS = ["MOTOBOY", "CORREIOS", "TRANSPORTADORA"];
 const DELIVERY_CHANNELS = ["ONLINE", "WHATSAPP"];
@@ -52,6 +53,9 @@ export async function GET(request: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const gate = await requireEntitlement("deliveries");
+    if (gate) return gate;
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status")?.toUpperCase() ?? "ALL";
@@ -188,6 +192,9 @@ export async function POST(request: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const gate = await requireEntitlement("deliveries");
+    if (gate) return gate;
 
     const body = await request.json().catch(() => null);
     const parsed = createSchema.safeParse(body);

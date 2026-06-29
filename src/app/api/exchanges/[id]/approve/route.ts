@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { processExchange } from "@/lib/exchanges/process";
+import { requireEntitlement } from "@/lib/entitlements-guard";
 
 export async function PUT(
   _req: Request,
@@ -11,6 +12,9 @@ export async function PUT(
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const gate = await requireEntitlement("vouchers");
+  if (gate) return gate;
 
   const { id } = await params;
 

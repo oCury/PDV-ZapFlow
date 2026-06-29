@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import evolutionAPI from "@/lib/whatsapp/evolution-api";
 import { z } from "zod";
+import { requireEntitlement } from "@/lib/entitlements-guard";
 
 const sendMessageSchema = z.object({
   number: z.string().min(10, "Número inválido"),
@@ -14,6 +15,9 @@ const sendMessageSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    const gate = await requireEntitlement("whatsapp");
+    if (gate) return gate;
+
     if (!evolutionAPI.isConfigured()) {
       return NextResponse.json(
         { error: "Evolution API não configurada." },

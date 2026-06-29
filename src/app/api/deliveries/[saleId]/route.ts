@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { z } from "zod";
 import { canTransition, getCarrier } from "@/lib/delivery";
 import type { DeliveryStatus, Prisma } from "@prisma/client";
+import { requireEntitlement } from "@/lib/entitlements-guard";
 
 const patchSchema = z.object({
   status: z
@@ -35,6 +36,9 @@ export async function PATCH(
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const gate = await requireEntitlement("deliveries");
+    if (gate) return gate;
 
     const { saleId: ref } = await params;
     const body = await request.json().catch(() => null);

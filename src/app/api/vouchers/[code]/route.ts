@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireTenant } from "@/lib/auth";
+import { requireEntitlement } from "@/lib/entitlements-guard";
 
 export async function GET(
   _req: Request,
@@ -10,6 +11,9 @@ export async function GET(
   if (!t) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const gate = await requireEntitlement("vouchers");
+  if (gate) return gate;
 
   const { code } = await params;
 

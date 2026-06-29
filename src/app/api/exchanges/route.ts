@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { createExchangeSchema } from "@/lib/validations/exchanges";
 import { processExchange } from "@/lib/exchanges/process";
+import { requireEntitlement } from "@/lib/entitlements-guard";
 
 // ─── GET: List exchanges ────────────────────────────────────────────────────
 
@@ -12,6 +13,9 @@ export async function GET(req: Request) {
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const gate = await requireEntitlement("vouchers");
+  if (gate) return gate;
 
   const { searchParams } = new URL(req.url);
   const status = searchParams.get("status");
@@ -103,6 +107,9 @@ export async function POST(req: Request) {
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const gate = await requireEntitlement("vouchers");
+  if (gate) return gate;
 
   try {
     const body = await req.json();

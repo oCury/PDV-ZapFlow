@@ -1,6 +1,7 @@
 import { getSession } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { exportReportSchema } from "@/lib/validations/reports";
+import { requireEntitlement } from "@/lib/entitlements-guard";
 import { calculateAbcCurve } from "@/lib/reports/abc-curve";
 import { calculateProfitMargin } from "@/lib/reports/profit-margin";
 import { calculateStockTurnover } from "@/lib/reports/stock-turnover";
@@ -51,6 +52,9 @@ export async function GET(req: Request) {
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const gate = await requireEntitlement("reports.advanced");
+  if (gate) return gate;
 
   const { searchParams } = new URL(req.url);
   const parsed = exportReportSchema.safeParse({

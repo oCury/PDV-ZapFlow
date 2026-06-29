@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { redeemVoucherSchema } from "@/lib/validations/vouchers";
 import { redeemVoucher } from "@/lib/vouchers/service";
+import { requireEntitlement } from "@/lib/entitlements-guard";
 
 export async function POST(
   req: Request,
@@ -11,6 +12,9 @@ export async function POST(
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const gate = await requireEntitlement("vouchers");
+  if (gate) return gate;
 
   const { code } = await params;
 

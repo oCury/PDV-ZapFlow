@@ -2,12 +2,16 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { reportDateRangeSchema } from "@/lib/validations/reports";
 import { calculateAbcCurve } from "@/lib/reports/abc-curve";
+import { requireEntitlement } from "@/lib/entitlements-guard";
 
 export async function GET(req: Request) {
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const gate = await requireEntitlement("reports.advanced");
+  if (gate) return gate;
 
   const { searchParams } = new URL(req.url);
   const parsed = reportDateRangeSchema.safeParse({

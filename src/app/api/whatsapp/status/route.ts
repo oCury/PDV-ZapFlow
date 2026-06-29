@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import evolutionAPI from "@/lib/whatsapp/evolution-api";
+import { requireEntitlement } from "@/lib/entitlements-guard";
 
 export async function GET(request: NextRequest) {
   try {
+    const gate = await requireEntitlement("whatsapp");
+    if (gate) return gate;
+
     if (!evolutionAPI.isConfigured()) {
       return NextResponse.json({
         configured: false,

@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import evolutionAPI from "@/lib/whatsapp/evolution-api";
+import { requireEntitlement } from "@/lib/entitlements-guard";
 
 export async function GET(request: NextRequest) {
   try {
+    const gate = await requireEntitlement("whatsapp");
+    if (gate) return gate;
+
     if (!evolutionAPI.isConfigured()) {
       return NextResponse.json(
         { error: "Evolution API não configurada. Verifique EVOLUTION_API_URL, EVOLUTION_API_KEY e EVOLUTION_INSTANCE_NAME no .env" },
@@ -59,6 +63,9 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE() {
   try {
+    const gate = await requireEntitlement("whatsapp");
+    if (gate) return gate;
+
     if (!evolutionAPI.isConfigured()) {
       return NextResponse.json(
         { error: "Evolution API não configurada." },

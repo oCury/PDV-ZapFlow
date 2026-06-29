@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { createCommissionRuleSchema } from "@/lib/validations/commissions";
+import { requireEntitlement } from "@/lib/entitlements-guard";
 
 export async function GET(req: NextRequest) {
   try {
@@ -9,6 +10,9 @@ export async function GET(req: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const gate = await requireEntitlement("commissions");
+    if (gate) return gate;
 
     const userId = req.nextUrl.searchParams.get("userId");
 
@@ -41,6 +45,9 @@ export async function POST(req: Request) {
     if (!session || session.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const gate = await requireEntitlement("commissions");
+    if (gate) return gate;
 
     const body = await req.json();
     const parsed = createCommissionRuleSchema.safeParse(body);

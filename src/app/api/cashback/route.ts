@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { getNumericSetting, getSetting } from "@/lib/settings";
+import { requireEntitlement } from "@/lib/entitlements-guard";
 
 /** GET /api/cashback — list customers with cashback info */
 export async function GET() {
@@ -10,6 +11,9 @@ export async function GET() {
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const gate = await requireEntitlement("loyalty");
+    if (gate) return gate;
 
     const [cashbackPercent, storeName, whatsappInstance, cashbackMessage] = await Promise.all([
       getNumericSetting("cashback_percent"),

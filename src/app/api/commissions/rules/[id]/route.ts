@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { createCommissionRuleSchema } from "@/lib/validations/commissions";
+import { requireEntitlement } from "@/lib/entitlements-guard";
 
 export async function PUT(
   req: Request,
@@ -12,6 +13,9 @@ export async function PUT(
     if (!session || session.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const gate = await requireEntitlement("commissions");
+    if (gate) return gate;
 
     const { id } = await params;
     const body = await req.json();
@@ -97,6 +101,9 @@ export async function DELETE(
     if (!session || session.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const gate = await requireEntitlement("commissions");
+    if (gate) return gate;
 
     const { id } = await params;
 

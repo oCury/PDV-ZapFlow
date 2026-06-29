@@ -4,12 +4,16 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { createVoucherSchema, voucherQuerySchema } from "@/lib/validations/vouchers";
 import { createVoucher } from "@/lib/vouchers/service";
+import { requireEntitlement } from "@/lib/entitlements-guard";
 
 export async function GET(req: Request) {
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const gate = await requireEntitlement("vouchers");
+  if (gate) return gate;
 
   const { searchParams } = new URL(req.url);
 
@@ -97,6 +101,9 @@ export async function POST(req: Request) {
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const gate = await requireEntitlement("vouchers");
+  if (gate) return gate;
 
   try {
     const body = await req.json();

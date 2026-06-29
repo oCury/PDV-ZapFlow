@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getFollowupStats, getRecentFollowups } from "@/lib/followup/followup-service";
+import { requireEntitlement } from "@/lib/entitlements-guard";
 
 /**
  * GET /api/followups
@@ -13,6 +14,9 @@ export async function GET() {
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const gate = await requireEntitlement("whatsapp");
+    if (gate) return gate;
 
     const [stats, recent] = await Promise.all([
       getFollowupStats(),

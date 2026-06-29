@@ -2,12 +2,16 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { createTableSchema } from "@/lib/validations/pos";
+import { requireEntitlement } from "@/lib/entitlements-guard";
 
 /** GET /api/tables — list all tables with current open order info */
 export async function GET() {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const gate = await requireEntitlement("tables");
+    if (gate) return gate;
 
     const tables = await prisma.table.findMany({
       orderBy: { number: "asc" },
@@ -43,6 +47,9 @@ export async function POST(req: Request) {
   try {
     const session = await getSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const gate = await requireEntitlement("tables");
+    if (gate) return gate;
 
     const body = await req.json();
     const parsed = createTableSchema.safeParse(body);

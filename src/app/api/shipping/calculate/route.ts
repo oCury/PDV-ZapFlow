@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireEntitlement } from "@/lib/entitlements-guard";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -124,6 +125,9 @@ async function fetchExternalShipping(
 
 export async function POST(req: Request) {
   try {
+    const gate = await requireEntitlement("deliveries");
+    if (gate) return gate;
+
     const body = (await req.json()) as ShippingRequestBody;
     const { cep, items } = body;
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { commissionQuerySchema } from "@/lib/validations/commissions";
 import { calculateCommission } from "@/lib/commissions/calculate";
+import { requireEntitlement } from "@/lib/entitlements-guard";
 
 export async function GET(req: NextRequest) {
   try {
@@ -9,6 +10,9 @@ export async function GET(req: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const gate = await requireEntitlement("commissions");
+    if (gate) return gate;
 
     const searchParams = req.nextUrl.searchParams;
     const parsed = commissionQuerySchema.safeParse({

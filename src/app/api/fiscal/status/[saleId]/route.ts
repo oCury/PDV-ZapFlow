@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { FiscalService } from "@/lib/fiscal/FiscalService";
+import { requireEntitlement } from "@/lib/entitlements-guard";
 
 export async function GET(
   _req: Request,
@@ -11,6 +12,9 @@ export async function GET(
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const gate = await requireEntitlement("fiscal.nfce");
+  if (gate) return gate;
 
   const { saleId } = await params;
 
