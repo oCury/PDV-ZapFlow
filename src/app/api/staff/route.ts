@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, hashPassword } from "@/lib/auth";
+import { currentPlan } from "@/lib/entitlements-guard";
+import { seatLimit } from "@/lib/entitlements";
 
 export async function GET() {
   const admin = await requireAdmin();
@@ -47,6 +49,18 @@ export async function POST(req: Request) {
         { error: "Já existe um usuário com este email." },
         { status: 409 }
       );
+    }
+
+    const plan = (await currentPlan()) ?? "basic";
+    const limit = seatLimit(plan);
+    if (limit !== null) {
+      const activeCount = await prisma.user.count({ where: { active: true } }); // auto-scoped to tenant
+      if (activeCount >= limit) {
+        return NextResponse.json(
+          { success: false, error: "Limite de usuários do seu plano atingido", upgrade: true },
+          { status: 403 },
+        );
+      }
     }
 
     const user = await prisma.user.create({
