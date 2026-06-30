@@ -2,7 +2,16 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getSessionFromRequest } from "@/lib/auth-edge";
 
-const PUBLIC_PATHS = ["/login", "/api/auth/login"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/signup",
+  "/verify",
+  "/assinar",
+  "/api/auth/login",
+  "/api/auth/signup",
+  "/api/auth/verify",
+  "/api/auth/resend-verification",
+];
 const EMPLOYEE_ALLOWED_PAGES = ["/pdv", "/products"];
 
 function isPublic(pathname: string) {
@@ -32,6 +41,14 @@ export async function middleware(req: NextRequest) {
 
     if (!isAllowed) {
       return NextResponse.redirect(new URL("/pdv", req.url));
+    }
+  }
+
+  // Trial gate: expired trial -> /assinar (data preserved). null/absent trialEndsAt => never gated.
+  if (!pathname.startsWith("/api/")) {
+    const t = session.trialEndsAt;
+    if (t && new Date(t).getTime() < Date.now() && pathname !== "/assinar") {
+      return NextResponse.redirect(new URL("/assinar", req.url));
     }
   }
 
