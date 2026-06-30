@@ -33,6 +33,7 @@ interface SessionPayload {
   role: "ADMIN" | "EMPLOYEE";
   name: string;
   tenantId: string;
+  trialEndsAt?: string | null; // ISO string; absent/null => no trial limit
 }
 
 function sign(payload: string): string {

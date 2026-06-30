@@ -23,11 +23,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Usuário sem loja associada." }, { status: 403 });
     }
 
+    const tenant = await basePrisma.tenant.findUnique({
+      where: { id: user.tenant_id },
+      select: { trial_ends_at: true },
+    });
+
     await setSessionCookie({
       userId: user.id,
       role: user.role,
       name: user.name,
       tenantId: user.tenant_id,
+      trialEndsAt: tenant?.trial_ends_at ? tenant.trial_ends_at.toISOString() : null,
     });
 
     return NextResponse.json({ user: { id: user.id, name: user.name, role: user.role } });
