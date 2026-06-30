@@ -1,15 +1,8 @@
 // Usage: npm run tenant:create -- --name "Loja X" --slug loja-x --email admin@lojax.com --password secret123 --plan <basic|pro|enterprise> (optional, default basic)
-import { PrismaClient } from "@prisma/client";
-import { randomBytes, scryptSync } from "crypto";
 import { PLANS } from "../src/lib/entitlements";
-
-const prisma = new PrismaClient();
-
-function hashPassword(password: string): string {
-  const salt = randomBytes(16).toString("hex");
-  const hash = scryptSync(password, salt, 64).toString("hex");
-  return `${salt}:${hash}`;
-}
+import { createTenantWithAdmin } from "../src/lib/tenant/provision";
+import { hashPassword } from "../src/lib/auth";
+import { basePrisma } from "../src/lib/prisma";
 
 function arg(flag: string): string | undefined {
   const i = process.argv.indexOf(flag);
@@ -34,27 +27,15 @@ async function main() {
   }
   const plan = planArg as (typeof PLANS)[number];
 
-  await prisma.$transaction(async (tx) => {
-    const tenant = await tx.tenant.create({ data: { name, slug, plan } });
-    const user = await tx.user.create({
-      data: {
-        name: "Administrador",
-        email,
-        password: hashPassword(password),
-        role: "ADMIN",
-        tenant_id: tenant.id,
-      },
-    });
-
-    console.log(`Tenant ${tenant.slug} (${tenant.id})`);
-    console.log(`Admin ${user.email} (${user.id})`);
-  });
+  const res = await createTenantWithAdmin({ name, slugBase: slug, email, passwordHash: hashPassword(password), plan, trialEndsAt: null });
+  console.log(`Tenant ${res.slug} (${res.tenantId})`);
+  console.log(`Admin ${email} (${res.userId})`);
 }
 
 main()
-  .then(async () => { await prisma.$disconnect(); process.exit(0); })
+  .then(async () => { await basePrisma.$disconnect(); process.exit(0); })
   .catch(async (e) => {
     console.error(e);
-    await prisma.$disconnect();
+    await basePrisma.$disconnect();
     process.exit(1);
   });
