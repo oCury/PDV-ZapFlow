@@ -13,11 +13,26 @@ model Tenant {
   slug          String        @unique
   plan          Plan?
   active        Boolean       @default(true)
+  trial_ends_at DateTime?
   created_at    DateTime      @default(now())
   updated_at    DateTime      @updatedAt
   mp_connection MpConnection?
 
   @@map("tenants")
+}
+
+model PendingSignup {
+  id            String   @id @default(cuid())
+  token         String   @unique
+  email         String   @unique
+  name          String
+  loja          String
+  password_hash String
+  plan          Plan
+  expires_at    DateTime
+  created_at    DateTime @default(now())
+
+  @@map("pending_signups")
 }
 
 model MpConnection {
