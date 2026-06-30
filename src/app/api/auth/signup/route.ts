@@ -3,6 +3,7 @@ import { randomBytes } from "crypto";
 import { basePrisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth";
 import { validateSignup, type SignupInput } from "@/lib/signup";
+import { type Plan } from "@/lib/entitlements";
 import { sendVerificationEmail } from "@/lib/email/resend";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -25,8 +26,8 @@ export async function POST(req: NextRequest) {
   // Upsert the pending signup (one per email): replace any prior pending row.
   await basePrisma.pendingSignup.upsert({
     where: { email },
-    update: { token, name: body.name.trim(), loja: body.loja.trim(), password_hash: hashPassword(body.password), plan: body.plan as never, expires_at },
-    create: { email, token, name: body.name.trim(), loja: body.loja.trim(), password_hash: hashPassword(body.password), plan: body.plan as never, expires_at },
+    update: { token, name: body.name.trim(), loja: body.loja.trim(), password_hash: hashPassword(body.password), plan: body.plan as Plan, expires_at },
+    create: { email, token, name: body.name.trim(), loja: body.loja.trim(), password_hash: hashPassword(body.password), plan: body.plan as Plan, expires_at },
   });
 
   const appUrl = process.env.APP_URL ?? "https://pdv-zap-flow.vercel.app";

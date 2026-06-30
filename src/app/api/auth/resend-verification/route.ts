@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   }
   let email: string | undefined;
   try { email = (await req.json()).email?.toLowerCase().trim(); } catch { /* ignore */ }
-  if (email) {
+  if (email && typeof email === "string") {
     const pending = await basePrisma.pendingSignup.findUnique({ where: { email } });
     if (pending) {
       const token = randomBytes(32).toString("hex");
