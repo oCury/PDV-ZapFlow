@@ -136,7 +136,7 @@ export function Sidebar() {
         </button>
       </div>
 
-      <nav className="flex-1 py-4 space-y-1 px-2">
+      <nav className="flex-1 min-h-0 overflow-y-auto py-4 space-y-1 px-2">
         {visibleItems.map((item) => {
           const locked = isLocked(item);
           const isActive = !locked && pathname === item.href;
