@@ -6,7 +6,7 @@ const PASSWORD_MIN = 8;
 
 export function slugify(input: string): string {
   const s = input
-    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");

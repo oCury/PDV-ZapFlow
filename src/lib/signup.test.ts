@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { slugify, validateSignup, trialStatus, TRIAL_DAYS } from "./signup";
 
+it("TRIAL_DAYS is 7", () => { expect(TRIAL_DAYS).toBe(7); });
+
 describe("slugify", () => {
   it("lowercases, strips accents/symbols, hyphenates", () => {
     expect(slugify("Loja do João & Cia!")).toBe("loja-do-joao-cia");

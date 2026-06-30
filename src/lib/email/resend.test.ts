@@ -19,4 +19,8 @@ describe("sendVerificationEmail", () => {
     send.mockResolvedValue({ data: null, error: { message: "bad" } });
     await expect(sendVerificationEmail({ to: "a@b.com", name: "Ana", link: "x" })).rejects.toThrow();
   });
+  it("throws when RESEND_API_KEY is absent", async () => {
+    delete process.env.RESEND_API_KEY;
+    await expect(sendVerificationEmail({ to: "a@b.com", name: "Ana", link: "x" })).rejects.toThrow("RESEND_API_KEY");
+  });
 });
