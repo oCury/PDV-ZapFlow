@@ -43,6 +43,24 @@ export async function POST(req: Request) {
   }
 
   try {
+    if (pending.created_tenant_id) {
+      const t = await basePrisma.tenant.findUnique({
+        where: { id: pending.created_tenant_id },
+        select: { paid_until: true },
+      });
+      const base =
+        t?.paid_until && t.paid_until > new Date() ? t.paid_until.getTime() : Date.now();
+      await basePrisma.tenant.update({
+        where: { id: pending.created_tenant_id },
+        data: { paid_until: new Date(base + PERIOD_MS) },
+      });
+      await basePrisma.pendingSignup.update({
+        where: { order_nsu: orderNsu },
+        data: { status: "paid" },
+      });
+      return NextResponse.json({ ok: true });
+    }
+
     const result = await createTenantWithAdmin({
       name: pending.loja,
       slugBase: slugify(pending.loja),

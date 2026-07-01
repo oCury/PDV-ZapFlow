@@ -3,6 +3,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const findUnique = vi.fn();
 const update = vi.fn();
 const provision = vi.fn();
+const tenantFindUnique = vi.fn();
+const tenantUpdate = vi.fn();
 
 vi.mock("@/lib/prisma", () => ({
   basePrisma: {
@@ -10,7 +12,10 @@ vi.mock("@/lib/prisma", () => ({
       findUnique: (a: unknown) => findUnique(a),
       update: (a: unknown) => update(a),
     },
-    tenant: { findUnique: vi.fn(), update: vi.fn() },
+    tenant: {
+      findUnique: (a: unknown) => tenantFindUnique(a),
+      update: (a: unknown) => tenantUpdate(a),
+    },
   },
 }));
 
@@ -31,6 +36,8 @@ beforeEach(() => {
   findUnique.mockReset();
   update.mockReset();
   provision.mockReset();
+  tenantFindUnique.mockReset();
+  tenantUpdate.mockReset();
 });
 
 it("creates the account once for a valid paid webhook", async () => {
@@ -106,4 +113,39 @@ it("returns 200 without throwing if provisioning fails (no retry storm)", async 
   expect(res.status).toBe(200);
   expect(provision).toHaveBeenCalledTimes(1);
   expect(update).not.toHaveBeenCalled();
+});
+
+it("extends paid_until for a renewal (created_tenant_id set) without provisioning a new account", async () => {
+  findUnique.mockResolvedValue({
+    id: "p2",
+    order_nsu: "o1",
+    status: "pending",
+    amount_cents: 16900,
+    plan: "pro",
+    loja: "L",
+    name: "A",
+    email: "renew+t1@zapflow.internal",
+    password_hash: "-",
+    created_tenant_id: "t1",
+  });
+  tenantFindUnique.mockResolvedValue({ paid_until: null });
+  tenantUpdate.mockResolvedValue({});
+  update.mockResolvedValue({});
+
+  const before = Date.now();
+  const res = await POST(req({ order_nsu: "o1", paid_amount: 16900 }));
+  const after = Date.now();
+
+  expect(res.status).toBe(200);
+  expect(provision).not.toHaveBeenCalled();
+  expect(tenantUpdate).toHaveBeenCalledTimes(1);
+  const updateCall = tenantUpdate.mock.calls[0][0] as { where: { id: string }; data: { paid_until: Date } };
+  expect(updateCall.where).toEqual({ id: "t1" });
+  const paidUntil = updateCall.data.paid_until.getTime();
+  const PERIOD_MS = 30 * 24 * 60 * 60_000;
+  expect(paidUntil).toBeGreaterThanOrEqual(before + PERIOD_MS);
+  expect(paidUntil).toBeLessThanOrEqual(after + PERIOD_MS);
+  expect(update).toHaveBeenCalledWith(
+    expect.objectContaining({ where: { order_nsu: "o1" }, data: { status: "paid" } })
+  );
 });
