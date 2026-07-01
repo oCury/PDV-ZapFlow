@@ -14,6 +14,7 @@ model Tenant {
   plan          Plan?
   active        Boolean       @default(true)
   trial_ends_at DateTime?
+  paid_until    DateTime?
   created_at    DateTime      @default(now())
   updated_at    DateTime      @updatedAt
   mp_connection MpConnection?
@@ -22,15 +23,20 @@ model Tenant {
 }
 
 model PendingSignup {
-  id            String   @id @default(cuid())
-  token         String   @unique
-  email         String   @unique
-  name          String
-  loja          String
-  password_hash String
-  plan          Plan
-  expires_at    DateTime
-  created_at    DateTime @default(now())
+  id                String   @id @default(cuid())
+  order_nsu         String   @unique
+  email             String
+  name              String
+  loja              String
+  password_hash     String
+  plan              Plan
+  amount_cents      Int
+  invoice_slug      String?
+  status            String   @default("pending") // pending | paid | consumed
+  created_tenant_id String?
+  created_user_id   String?
+  expires_at        DateTime
+  created_at        DateTime @default(now())
 
   @@map("pending_signups")
 }
