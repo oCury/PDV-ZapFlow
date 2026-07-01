@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { currentPlan } from "@/lib/entitlements-guard";
 import { allowedKeys } from "@/lib/entitlements";
-import { trialStatus } from "@/lib/signup";
+import { subscriptionStatus } from "@/lib/billing/status";
 import { basePrisma } from "@/lib/prisma";
 
 export async function GET() {
@@ -13,13 +13,13 @@ export async function GET() {
   const plan = (await currentPlan()) ?? "basic";
   const tenant = await basePrisma.tenant.findUnique({
     where: { id: session.tenantId },
-    select: { trial_ends_at: true },
+    select: { paid_until: true },
   });
-  const trial = trialStatus(tenant?.trial_ends_at ?? null);
+  const subscription = subscriptionStatus(tenant?.paid_until ?? null);
   return NextResponse.json({
     user: { id: session.userId, name: session.name, role: session.role },
     plan,
     entitlements: allowedKeys(plan),
-    trial,
+    subscription,
   });
 }

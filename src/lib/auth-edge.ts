@@ -8,7 +8,7 @@ interface SessionPayload {
   role: "ADMIN" | "EMPLOYEE";
   name: string;
   tenantId: string;
-  trialEndsAt?: string | null;
+  paidUntil?: string | null;
 }
 
 async function hmacSign(payload: string): Promise<string> {

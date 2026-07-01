@@ -25,7 +25,7 @@ export async function POST(req: Request) {
 
     const tenant = await basePrisma.tenant.findUnique({
       where: { id: user.tenant_id },
-      select: { trial_ends_at: true },
+      select: { paid_until: true },
     });
 
     await setSessionCookie({
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
       role: user.role,
       name: user.name,
       tenantId: user.tenant_id,
-      trialEndsAt: tenant?.trial_ends_at ? tenant.trial_ends_at.toISOString() : null,
+      paidUntil: tenant?.paid_until ? tenant.paid_until.toISOString() : null,
     });
 
     return NextResponse.json({ user: { id: user.id, name: user.name, role: user.role } });

@@ -44,9 +44,9 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // Trial gate: expired trial -> /assinar (data preserved). null/absent trialEndsAt => never gated.
+  // Subscription gate: lapsed paid_until -> /assinar (data preserved). null/absent paidUntil => never gated.
   if (!pathname.startsWith("/api/")) {
-    const t = session.trialEndsAt;
+    const t = session.paidUntil;
     if (t && new Date(t).getTime() < Date.now() && pathname !== "/assinar") {
       return NextResponse.redirect(new URL("/assinar", req.url));
     }
