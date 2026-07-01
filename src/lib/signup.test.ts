@@ -1,7 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { slugify, validateSignup, trialStatus, TRIAL_DAYS } from "./signup";
-
-it("TRIAL_DAYS is 7", () => { expect(TRIAL_DAYS).toBe(7); });
+import { slugify, validateSignup } from "./signup";
 
 describe("slugify", () => {
   it("lowercases, strips accents/symbols, hyphenates", () => {
@@ -37,15 +35,3 @@ describe("validateSignup", () => {
   });
 });
 
-describe("trialStatus", () => {
-  const now = new Date("2026-06-30T12:00:00Z");
-  it("null trial_ends_at => active (grandfathered)", () => {
-    expect(trialStatus(null, now)).toEqual({ state: "active", daysLeft: null });
-  });
-  it("future => trialing with daysLeft (ceil)", () => {
-    expect(trialStatus(new Date("2026-07-02T12:00:00Z"), now)).toEqual({ state: "trialing", daysLeft: 2 });
-  });
-  it("past => expired", () => {
-    expect(trialStatus(new Date("2026-06-29T12:00:00Z"), now)).toEqual({ state: "expired", daysLeft: 0 });
-  });
-});

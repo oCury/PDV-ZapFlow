@@ -4,13 +4,12 @@ import { getSessionFromRequest } from "@/lib/auth-edge";
 
 const PUBLIC_PATHS = [
   "/login",
-  "/signup",
-  "/verify",
   "/assinar",
+  "/signup/sucesso",
   "/api/auth/login",
-  "/api/auth/signup",
-  "/api/auth/verify",
-  "/api/auth/resend-verification",
+  "/api/signup/checkout",
+  "/api/signup/status",
+  "/api/webhooks/infinitepay",
 ];
 const EMPLOYEE_ALLOWED_PAGES = ["/pdv", "/products"];
 

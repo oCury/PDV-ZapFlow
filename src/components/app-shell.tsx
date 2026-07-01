@@ -13,11 +13,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const isLoginPage = pathname === "/login";
   const isPdvPage = pathname === "/pdv";
 
-  const [trial, setTrial] = useState<{ state: string; daysLeft: number | null } | null>(null);
+  const [subscription, setSubscription] = useState<{ state: string; daysLeft: number | null } | null>(null);
   useEffect(() => {
     fetch("/api/auth/me")
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => d?.trial && setTrial(d.trial))
+      .then((d) => d?.subscription && setSubscription(d.subscription))
       .catch(() => {});
   }, []);
 
@@ -45,9 +45,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             : "flex-1 overflow-y-auto overflow-x-hidden theme-bg-base p-6 pb-24 md:pb-0"
         }
       >
-        {trial?.state === "trialing" && trial.daysLeft !== null && trial.daysLeft <= 3 && (
+        {subscription?.state === "active" && subscription.daysLeft !== null && subscription.daysLeft <= 3 && (
           <div className="bg-amber-500/15 text-amber-800 text-sm text-center py-2 px-4">
-            Seu teste grátis termina em {trial.daysLeft} {trial.daysLeft === 1 ? "dia" : "dias"}.{" "}
+            Sua assinatura vence em {subscription.daysLeft} {subscription.daysLeft === 1 ? "dia" : "dias"}.{" "}
             <a href="/assinar" className="underline font-semibold">Assinar</a>
           </div>
         )}

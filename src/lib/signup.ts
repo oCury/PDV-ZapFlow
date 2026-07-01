@@ -1,6 +1,5 @@
 import { type Plan } from "@/lib/entitlements";
 
-export const TRIAL_DAYS = 7;
 export const SIGNUP_PLANS: Plan[] = ["basic", "pro"]; // enterprise is sales-led
 const PASSWORD_MIN = 8;
 
@@ -27,10 +26,3 @@ export function validateSignup(i: SignupInput): ValidationResult {
   return { ok: true };
 }
 
-export type TrialState = "active" | "trialing" | "expired";
-export function trialStatus(trialEndsAt: Date | null, now: Date = new Date()): { state: TrialState; daysLeft: number | null } {
-  if (!trialEndsAt) return { state: "active", daysLeft: null };
-  const ms = trialEndsAt.getTime() - now.getTime();
-  if (ms <= 0) return { state: "expired", daysLeft: 0 };
-  return { state: "trialing", daysLeft: Math.ceil(ms / 86_400_000) };
-}
