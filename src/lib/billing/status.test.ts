@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { it, expect } from "vitest";
 import { subscriptionStatus } from "./status";
 const now = new Date("2026-07-01T12:00:00Z");
 it("null paid_until => active (grandfathered)", () => {
