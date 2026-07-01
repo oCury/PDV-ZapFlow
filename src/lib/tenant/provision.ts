@@ -12,7 +12,7 @@ export async function uniqueSlug(base: string): Promise<string> {
 }
 
 export interface ProvisionInput {
-  name: string; slugBase: string; email: string; passwordHash: string; plan: Plan; trialEndsAt: Date | null; adminName?: string;
+  name: string; slugBase: string; email: string; passwordHash: string; plan: Plan; paidUntil: Date | null; adminName?: string;
 }
 
 /** Atomically create a tenant + its admin user. Returns ids. Caller pre-hashes the password. */
@@ -21,7 +21,7 @@ export async function createTenantWithAdmin(i: ProvisionInput): Promise<{ tenant
   // could collide, but the slug @unique index makes the loser fail safely (P2002), not corrupt data.
   const slug = await uniqueSlug(i.slugBase);
   return basePrisma.$transaction(async (tx) => {
-    const tenant = await tx.tenant.create({ data: { name: i.name, slug, plan: i.plan, trial_ends_at: i.trialEndsAt } });
+    const tenant = await tx.tenant.create({ data: { name: i.name, slug, plan: i.plan, paid_until: i.paidUntil } });
     const user = await tx.user.create({ data: { name: i.adminName ?? "Administrador", email: i.email, password: i.passwordHash, role: "ADMIN", tenant_id: tenant.id } });
     return { tenantId: tenant.id, slug: tenant.slug, userId: user.id };
   });

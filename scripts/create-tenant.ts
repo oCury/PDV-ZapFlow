@@ -27,7 +27,7 @@ async function main() {
   }
   const plan = planArg as (typeof PLANS)[number];
 
-  const res = await createTenantWithAdmin({ name, slugBase: slug, email, passwordHash: hashPassword(password), plan, trialEndsAt: null });
+  const res = await createTenantWithAdmin({ name, slugBase: slug, email, passwordHash: hashPassword(password), plan, paidUntil: null });
   console.log(`Tenant ${res.slug} (${res.tenantId})`);
   console.log(`Admin ${email} (${res.userId})`);
 }

@@ -32,8 +32,8 @@ describe("createTenantWithAdmin", () => {
     txCreateTenant.mockResolvedValue({ id: "t1", slug: "loja-x", plan: "pro" });
     txCreateUser.mockResolvedValue({ id: "u1", email: "a@b.com" });
     const trial = new Date("2026-07-07T00:00:00Z");
-    const res = await createTenantWithAdmin({ name: "Loja X", slugBase: "loja-x", email: "a@b.com", passwordHash: "h", plan: "pro", trialEndsAt: trial });
-    expect(txCreateTenant).toHaveBeenCalledWith({ data: { name: "Loja X", slug: "loja-x", plan: "pro", trial_ends_at: trial } });
+    const res = await createTenantWithAdmin({ name: "Loja X", slugBase: "loja-x", email: "a@b.com", passwordHash: "h", plan: "pro", paidUntil: trial });
+    expect(txCreateTenant).toHaveBeenCalledWith({ data: { name: "Loja X", slug: "loja-x", plan: "pro", paid_until: trial } });
     expect(txCreateUser).toHaveBeenCalledWith({ data: { name: "Administrador", email: "a@b.com", password: "h", role: "ADMIN", tenant_id: "t1" } });
     expect(res).toEqual({ tenantId: "t1", slug: "loja-x", userId: "u1" });
   });
