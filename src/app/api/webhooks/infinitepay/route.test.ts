@@ -98,3 +98,12 @@ it("rejects an amount mismatch", async () => {
   expect(res.status).toBe(200);
   expect(provision).not.toHaveBeenCalled();
 });
+
+it("returns 200 without throwing if provisioning fails (no retry storm)", async () => {
+  findUnique.mockResolvedValue({ id: "p1", order_nsu: "o1", status: "pending", amount_cents: 16900, plan: "pro", loja: "L", name: "A", email: "a@b.com", password_hash: "h", created_tenant_id: null });
+  provision.mockRejectedValue(new Error("db down"));
+  const res = await POST(req({ order_nsu: "o1", paid_amount: 16900 }));
+  expect(res.status).toBe(200);
+  expect(provision).toHaveBeenCalledTimes(1);
+  expect(update).not.toHaveBeenCalled();
+});

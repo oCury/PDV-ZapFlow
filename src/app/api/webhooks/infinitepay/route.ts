@@ -42,24 +42,28 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  const result = await createTenantWithAdmin({
-    name: pending.loja,
-    slugBase: slugify(pending.loja),
-    email: pending.email,
-    passwordHash: pending.password_hash,
-    plan: pending.plan as Plan,
-    paidUntil: new Date(Date.now() + PERIOD_MS),
-    adminName: pending.name,
-  });
+  try {
+    const result = await createTenantWithAdmin({
+      name: pending.loja,
+      slugBase: slugify(pending.loja),
+      email: pending.email,
+      passwordHash: pending.password_hash,
+      plan: pending.plan as Plan,
+      paidUntil: new Date(Date.now() + PERIOD_MS),
+      adminName: pending.name,
+    });
 
-  await basePrisma.pendingSignup.update({
-    where: { order_nsu: orderNsu },
-    data: {
-      status: "paid",
-      created_tenant_id: result.tenantId,
-      created_user_id: result.userId,
-    },
-  });
+    await basePrisma.pendingSignup.update({
+      where: { order_nsu: orderNsu },
+      data: {
+        status: "paid",
+        created_tenant_id: result.tenantId,
+        created_user_id: result.userId,
+      },
+    });
+  } catch (err) {
+    console.error("[infinitepay] provisioning failed after payment", { orderNsu, err });
+  }
 
   return NextResponse.json({ ok: true });
 }
