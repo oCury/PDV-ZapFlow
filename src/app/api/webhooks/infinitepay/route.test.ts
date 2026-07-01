@@ -149,3 +149,34 @@ it("extends paid_until for a renewal (created_tenant_id set) without provisionin
     expect.objectContaining({ where: { order_nsu: "o1" }, data: { status: "paid" } })
   );
 });
+
+it("renewal stacks paid_until on a future date (not from now)", async () => {
+  const futureBase = new Date(Date.now() + 10 * 24 * 60 * 60_000); // now + 10 days
+  findUnique.mockResolvedValue({
+    id: "p3",
+    order_nsu: "o2",
+    status: "pending",
+    amount_cents: 16900,
+    plan: "pro",
+    loja: "L",
+    name: "A",
+    email: "renew+t2@zapflow.internal",
+    password_hash: "-",
+    created_tenant_id: "t2",
+  });
+  tenantFindUnique.mockResolvedValue({ paid_until: futureBase });
+  tenantUpdate.mockResolvedValue({});
+  update.mockResolvedValue({});
+
+  const res = await POST(req({ order_nsu: "o2", paid_amount: 16900 }));
+  expect(res.status).toBe(200);
+  expect(provision).not.toHaveBeenCalled();
+
+  const PERIOD_MS = 30 * 24 * 60 * 60_000;
+  const updateCall = tenantUpdate.mock.calls[0][0] as { where: { id: string }; data: { paid_until: Date } };
+  expect(updateCall.where).toEqual({ id: "t2" });
+  // Must extend from futureBase, not from now
+  const result = updateCall.data.paid_until.getTime();
+  expect(result).toBeGreaterThanOrEqual(futureBase.getTime() + PERIOD_MS - 1000);
+  expect(result).toBeLessThanOrEqual(futureBase.getTime() + PERIOD_MS + 1000);
+});
