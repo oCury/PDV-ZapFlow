@@ -12,7 +12,7 @@ function Sucesso() {
     let tries = 0;
     const tick = async () => {
       const r = await fetch(`/api/signup/status?order=${order}`).then((x) => x.json()).catch(() => ({ status: "error" }));
-      if (r.status === "ready") { router.replace("/"); router.refresh(); return; }
+      if (r.status === "ready") { router.replace("/dashboard"); router.refresh(); return; }
       if ((r.status === "pending" || r.status === "error") && tries++ < 15) { setTimeout(tick, 2000); return; }
       setMsg("Pagamento em processamento. Você receberá acesso em instantes — se já pagou, tente entrar em alguns minutos.");
     };

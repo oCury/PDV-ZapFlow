@@ -39,7 +39,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard, adminOnly: true },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, adminOnly: true },
   { href: "/pdv", label: "PDV", icon: ShoppingCart, adminOnly: false },
   { href: "/tables", label: "Mesas", icon: UtensilsCrossed, adminOnly: false, entitlement: "tables" },
   { href: "/entregas", label: "Entregas", icon: Truck, adminOnly: false, entitlement: "deliveries" },

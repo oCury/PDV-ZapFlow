@@ -3,6 +3,8 @@ import type { NextRequest } from "next/server";
 import { getSessionFromRequest } from "@/lib/auth-edge";
 
 const PUBLIC_PATHS = [
+  "/",
+  "/cadastro",
   "/login",
   "/assinar",
   "/signup/sucesso",

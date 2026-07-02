@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Inter, Rubik, Nunito_Sans } from "next/font/google";
-import { AppShell } from "@/components/app-shell";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
@@ -46,9 +45,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body className={`${inter.variable} ${rubik.variable} ${nunito.variable} font-sans antialiased`}>
-        <Providers>
-          <AppShell>{children}</AppShell>
-        </Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

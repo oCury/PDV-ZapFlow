@@ -31,7 +31,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.push(data.user.role === "ADMIN" ? "/" : "/pdv");
+      router.push(data.user.role === "ADMIN" ? "/dashboard" : "/pdv");
       router.refresh();
     } catch {
       setError("Erro de conexão.");
