@@ -30,7 +30,7 @@ export const PLANS: Plan[] = [
     priceMonthly: 89,
     priceAnnual: 69,
     ctaLabel: "Começar no Basic",
-    ctaNote: "7 dias grátis · sem cartão",
+    ctaNote: "Cobrança mensal · cancele quando quiser",
     features: [
       "PDV completo (venda presencial)",
       "Catálogo com grade de tamanho e cor",
@@ -50,7 +50,7 @@ export const PLANS: Plan[] = [
     priceAnnual: 129,
     highlighted: true,
     ctaLabel: "Quero o Pro",
-    ctaNote: "7 dias grátis · cancele quando quiser",
+    ctaNote: "Cobrança mensal · cancele quando quiser",
     features: [
       "Tudo do Basic, e mais:",
       "Parcelamento na maquininha",

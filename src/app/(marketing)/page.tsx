@@ -156,7 +156,7 @@ function Hero() {
             href="/cadastro?plan=basic"
             className="group inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand px-7 py-3.5 text-base font-bold text-white shadow-sm transition-colors hover:bg-brand-strong sm:w-auto"
           >
-            Teste grátis por 7 dias
+            Começar agora
             <ArrowRight size={18} className="transition-transform group-hover:translate-x-0.5" />
           </a>
           <a
@@ -168,7 +168,7 @@ function Hero() {
         </div>
 
         <p className="mt-4 text-sm text-faint">
-          Sem cartão · Sem instalação · Funciona no celular, tablet e PC
+          Ative na hora · Sem fidelidade · Funciona no celular, tablet e PC
         </p>
 
         <HeroVisual />
@@ -368,7 +368,7 @@ function Pricing() {
       <div className="mx-auto max-w-2xl text-center">
         <h2 className="text-3xl font-bold text-ink sm:text-4xl">Planos que cabem no seu caixa</h2>
         <p className="mt-4 text-lg text-body">
-          Sem fidelidade. Comece grátis e mude de plano quando quiser.
+          Escolha seu plano e ative na hora. Sem fidelidade — cancele quando quiser.
         </p>
 
         <div className="mt-7 inline-flex items-center gap-1 rounded-xl border border-line bg-bg-soft p-1">
@@ -481,7 +481,7 @@ const FAQS = [
   },
   {
     q: "Tem fidelidade ou multa de cancelamento?",
-    a: "Não. Você começa com 7 dias grátis e cancela quando quiser, sem multa.",
+    a: "Não. O pagamento é mensal e você cancela quando quiser, sem multa nem fidelidade. A ativação acontece imediatamente após o pagamento.",
   },
 ];
 
@@ -532,7 +532,7 @@ function FinalCta() {
             Pronto para vender mais e controlar tudo?
           </h2>
           <p className="mx-auto mt-4 max-w-xl text-lg text-white/75">
-            Leva minutos para começar. Teste grátis por 7 dias, sem cartão.
+            Leva minutos para começar. Ative na hora — sem fidelidade, cancele quando quiser.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <a
