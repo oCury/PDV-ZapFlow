@@ -30,6 +30,25 @@
   --color-gray-700: #334155;
   --color-gray-800: #1e293b;
   --color-gray-900: #0f172a;
+
+  /* ── Landing design tokens (light, additive — do not modify above) ── */
+  --color-brand: #16b364;
+  --color-brand-strong: #0e9355;
+  --color-brand-deep: #0a6f40;
+  --color-brand-soft: #dcf7e8;
+
+  --color-ink: #0a1f17;
+  --color-body: #44564d;
+  --color-faint: #6c7d74;
+
+  --color-bg: #ffffff;
+  --color-bg-soft: #f3faf6;
+  --color-line: #e4ede8;
+
+  --radius-card: 1.25rem;
+
+  --font-display: var(--font-rubik);
+  --font-body: var(--font-nunito);
 }
 
 /* Dark theme (default) */
