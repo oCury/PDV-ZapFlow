@@ -1,7 +1,7 @@
 import { createTerminalOrder, getOrder, cancelOrder } from "@/lib/mercadopago/orders";
 import { listDevices, setOperatingMode } from "@/lib/mercadopago/devices";
 import { validateWebhookSignature } from "@/lib/mercadopago/checkout";
-import { MpApiError } from "@/lib/mercadopago/client";
+import { mapMpErrorToOperatorMessage } from "@/lib/mercadopago/errors";
 import { normalizeChargeStatus } from "../status";
 import type {
   TerminalDriver,
@@ -11,7 +11,6 @@ import type {
   CreateChargeInput,
   WebhookResolution,
   ProviderDevice,
-  OperatorError,
 } from "../types";
 
 function token(creds: ProviderCredentials): string {
@@ -20,26 +19,6 @@ function token(creds: ProviderCredentials): string {
 
 function extractPayment(order: any): { id?: string; status?: string } {
   return order?.transactions?.payments?.[0] ?? {};
-}
-
-/**
- * Maps any error that carries a numeric `status` to an OperatorError.
- * Handles both real MpApiError instances and duck-typed errors (e.g. test mocks).
- */
-function mapError(err: unknown): OperatorError {
-  const status =
-    err instanceof MpApiError
-      ? err.status
-      : typeof (err as any)?.status === "number"
-        ? (err as any).status
-        : null;
-  if (status !== null) {
-    if (status === 409) return { code: "DEVICE_BUSY", message: "Maquininha ocupada — cancele a cobrança anterior." };
-    if (status === 403) return { code: "CONFIG", message: "Configuração do Mercado Pago inválida. Verifique o app/integração." };
-    if (status === 400) return { code: "GENERIC", message: "Dados da cobrança inválidos." };
-    return { code: "GENERIC", message: "Erro ao comunicar com a maquininha. Tente novamente." };
-  }
-  return { code: "OFFLINE", message: "Maquininha sem conexão. Verifique a internet do dispositivo." };
 }
 
 export const mercadoPagoDriver: TerminalDriver = {
@@ -73,7 +52,7 @@ export const mercadoPagoDriver: TerminalDriver = {
         },
       };
     } catch (err) {
-      return { ok: false, error: mapError(err) };
+      return { ok: false, error: mapMpErrorToOperatorMessage(err) };
     }
   },
 
@@ -91,7 +70,7 @@ export const mercadoPagoDriver: TerminalDriver = {
         },
       };
     } catch (err) {
-      return { ok: false, error: mapError(err) };
+      return { ok: false, error: mapMpErrorToOperatorMessage(err) };
     }
   },
 
@@ -100,7 +79,7 @@ export const mercadoPagoDriver: TerminalDriver = {
       await cancelOrder(externalOrderId, token(creds));
       return { ok: true, data: undefined };
     } catch (err) {
-      return { ok: false, error: mapError(err) };
+      return { ok: false, error: mapMpErrorToOperatorMessage(err) };
     }
   },
 
@@ -143,7 +122,7 @@ export const mercadoPagoDriver: TerminalDriver = {
         data: devices.map((d) => ({ id: d.id, operatingMode: d.operating_mode as "PDV" | "STANDALONE" | undefined })),
       };
     } catch (err) {
-      return { ok: false, error: mapError(err) };
+      return { ok: false, error: mapMpErrorToOperatorMessage(err) };
     }
   },
 
@@ -152,7 +131,7 @@ export const mercadoPagoDriver: TerminalDriver = {
       await setOperatingMode(deviceId, mode, token(creds));
       return { ok: true, data: undefined };
     } catch (err) {
-      return { ok: false, error: mapError(err) };
+      return { ok: false, error: mapMpErrorToOperatorMessage(err) };
     }
   },
 };

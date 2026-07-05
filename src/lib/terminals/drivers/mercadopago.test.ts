@@ -7,6 +7,7 @@ vi.mock("@/lib/mercadopago/orders", () => ({
 }));
 
 import { createTerminalOrder, getOrder } from "@/lib/mercadopago/orders";
+import { MpApiError } from "@/lib/mercadopago/client";
 import { mercadoPagoDriver } from "./mercadopago";
 
 const creds = { accessToken: "tok", mpUserId: "u_1" };
@@ -40,7 +41,7 @@ describe("mercadoPagoDriver", () => {
   });
 
   it("maps MP API errors to an OperatorError", async () => {
-    (createTerminalOrder as any).mockRejectedValue(Object.assign(new Error("x"), { status: 409 }));
+    (createTerminalOrder as any).mockRejectedValue(new MpApiError(409, "busy"));
     const res = await mercadoPagoDriver.createCharge(creds, {
       deviceExternalId: "DEV1", amount: 10, method: "CREDIT", installments: 1, externalRef: "chg_1",
     });
