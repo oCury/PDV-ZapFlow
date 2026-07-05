@@ -446,6 +446,8 @@ model PaymentTerminal {
   charges TerminalCharge[]
 
   @@unique([tenant_id, provider, device_external_id])
+  // additive-safety: kept so the currently-deployed (old) code's sync upsert keeps working; dropped in Phase 11
+  @@unique([tenant_id, mp_device_id])
   @@index([tenant_id])
   @@index([is_active])
   @@map("payment_terminals")
@@ -473,6 +475,8 @@ model TerminalCharge {
   sale     Sale?           @relation(fields: [sale_id], references: [id])
 
   @@unique([tenant_id, provider, external_order_id])
+  // additive-safety: kept until Phase 11 so old code paths remain valid on the shared DB
+  @@unique([tenant_id, mp_order_id])
   @@index([tenant_id])
   @@index([terminal_id])
   @@index([sale_id])
