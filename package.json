@@ -15,6 +15,7 @@
     "tenant:create": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/create-tenant.ts",
     "tenant:list": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/list-tenants.ts",
     "tenant:set-plan": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/set-tenant-plan.ts",
+    "db:providers:backfill": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' scripts/backfill-provider-connections.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test"
