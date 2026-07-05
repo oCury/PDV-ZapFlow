@@ -19,7 +19,7 @@ beforeEach(() => vi.clearAllMocks());
 describe("handleWebhook", () => {
   it("resolves tenant via the charge fallback and finalizes an approved sandbox webhook", async () => {
     prismaMock.terminalCharge.findFirst.mockResolvedValue({ tenant_id: "tnt_1" });
-    const out = await handleWebhook("stone", {}, JSON.stringify({ externalOrderId: "ord_1" }));
+    const out = await handleWebhook("stone", {}, JSON.stringify({ id: "ord_1", status: "approved" }));
     expect(out.received).toBe(true);
     expect(finalizeTerminalCharge).toHaveBeenCalledWith(
       expect.objectContaining({ provider: "stone", externalOrderId: "ord_1", status: "APPROVED" }),
