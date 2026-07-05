@@ -1,20 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const prismaMock = vi.hoisted(() => ({
-  paymentTerminal: { findUnique: vi.fn() },
-  terminalCharge: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
-  sale: { create: vi.fn(), delete: vi.fn() },
-}));
-
-vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
-vi.mock("@/lib/settings", () => ({ getNumericSetting: vi.fn(async () => 6) }));
-vi.mock("@/lib/mercadopago/orders", () => ({ createTerminalOrder: vi.fn() }));
+vi.mock("@/lib/terminals/service", () => ({ initiateCharge: vi.fn() }));
 vi.mock("@/lib/auth", () => ({ getSession: vi.fn(async () => ({ userId: "u1", tenantId: "t1" })) }));
 
 import { POST } from "./route";
-import { createTerminalOrder } from "@/lib/mercadopago/orders";
+import { initiateCharge } from "@/lib/terminals/service";
 
-const createOrderMock = createTerminalOrder as unknown as ReturnType<typeof vi.fn>;
+const initiateMock = initiateCharge as unknown as ReturnType<typeof vi.fn>;
 
 function req(body: unknown) {
   return new Request("http://x/api/checkout/terminal-charge", {
@@ -32,30 +24,34 @@ const base = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  prismaMock.paymentTerminal.findUnique.mockResolvedValue({ id: "t1", mp_device_id: "DEV", is_active: true });
-  prismaMock.terminalCharge.findFirst.mockResolvedValue(null);
-  prismaMock.sale.create.mockResolvedValue({ id: "sale_1" });
-  prismaMock.terminalCharge.create.mockResolvedValue({ id: "chg_1" });
-  prismaMock.terminalCharge.update.mockResolvedValue({ id: "chg_1", status: "SENT" });
-  createOrderMock.mockResolvedValue({ id: "ord_1" });
+  initiateMock.mockResolvedValue({ ok: true, data: { chargeId: "chg_1", status: "SENT" } });
 });
 
 describe("POST terminal-charge", () => {
-  it("rejects parcela below R$5,00", async () => {
-    const res = await POST(req({ ...base, totalAmount: 12, installments: 3 }));
+  it("returns 400 for invalid body", async () => {
+    const res = await POST(req({}));
     expect(res.status).toBe(400);
   });
-  it("returns 409 when terminal already has an active charge", async () => {
-    prismaMock.terminalCharge.findFirst.mockResolvedValue({ id: "old" });
-    const res = await POST(req(base));
-    expect(res.status).toBe(409);
-  });
-  it("creates the order and returns chargeId on the happy path", async () => {
+  it("returns 200 with chargeId+status on success", async () => {
     const res = await POST(req(base));
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ chargeId: "chg_1", status: "SENT" });
-    expect(createOrderMock).toHaveBeenCalledWith(
-      expect.objectContaining({ terminalDeviceId: "DEV", installments: 3 })
-    );
+  });
+  it("returns 409 when service yields DEVICE_BUSY", async () => {
+    initiateMock.mockResolvedValue({ ok: false, error: { code: "DEVICE_BUSY", message: "ocupada" } });
+    const res = await POST(req(base));
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ code: "DEVICE_BUSY" });
+  });
+  it("returns 400 when service yields CONFIG", async () => {
+    initiateMock.mockResolvedValue({ ok: false, error: { code: "CONFIG", message: "cfg" } });
+    const res = await POST(req(base));
+    expect(res.status).toBe(400);
+  });
+  it("returns 401 when unauthenticated", async () => {
+    const { getSession } = await import("@/lib/auth");
+    (getSession as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+    const res = await POST(req(base));
+    expect(res.status).toBe(401);
   });
 });
