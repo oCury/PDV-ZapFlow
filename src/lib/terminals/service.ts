@@ -1,11 +1,15 @@
-import { prisma } from "@/lib/prisma";
+import { prisma, basePrisma } from "@/lib/prisma";
 import { getNumericSetting } from "@/lib/settings";
 import { validateInstallments } from "@/lib/mercadopago/amount";
 import { loadConnection } from "./connections";
 import { resolveDriver } from "./registry";
 import { finalizeTerminalCharge } from "./finalize";
+import { runWithTenant } from "@/lib/tenant/context";
+import { mercadoPagoDriver } from "./drivers/mercadopago";
+import { stoneDriver } from "./drivers/stone";
+import { connectTefDriver } from "./drivers/connecttef";
 import type { DriverResult, OperatorError } from "./types";
-import type { TerminalChargeMethod } from "@prisma/client";
+import type { TerminalChargeMethod, TerminalProviderName } from "@prisma/client";
 
 const CONFIG = (message: string): { ok: false; error: OperatorError } => ({
   ok: false,
@@ -176,4 +180,47 @@ export async function cancelCharge(chargeId: string): Promise<{ status: "CANCELE
     await prisma.sale.update({ where: { id: charge.sale_id }, data: { status: "CANCELLED" } });
   }
   return { status: "CANCELED" };
+}
+
+const DRIVERS_BY_NAME = { mercadopago: mercadoPagoDriver, stone: stoneDriver, connecttef: connectTefDriver };
+
+export async function handleWebhook(
+  provider: TerminalProviderName,
+  headers: Record<string, string>,
+  rawBody: string,
+): Promise<{ received: boolean }> {
+  const driver = DRIVERS_BY_NAME[provider];
+  if (!driver.verifyWebhook(headers, rawBody)) return { received: false };
+
+  let body: unknown;
+  try { body = JSON.parse(rawBody || "{}"); } catch { return { received: false }; }
+  const parsed = await driver.parseWebhook(headers, body);
+  if (!parsed.ok) return { received: false };
+  const res = parsed.data;
+
+  // Resolve tenant via the hint (external_account_id) using the UNSCOPED client.
+  let tenantId: string | null = null;
+  if (res.tenantHint?.key === "external_account_id") {
+    const conn = await basePrisma.providerConnection.findFirst({ where: { provider, external_account_id: res.tenantHint.value } });
+    tenantId = conn?.tenant_id ?? null;
+  }
+  if (!tenantId) {
+    const charge = await basePrisma.terminalCharge.findFirst({ where: { provider, external_order_id: res.externalOrderId } });
+    tenantId = charge?.tenant_id ?? null;
+  }
+  if (!tenantId) return { received: false };
+
+  await runWithTenant(tenantId, async () => {
+    let status = res.status, paymentId = res.externalPaymentId, cardBrand = res.cardBrand;
+    // Some providers (MP) only send ids → re-resolve status with tenant creds.
+    if (status === "PROCESSING") {
+      const conn = await loadConnection(provider);
+      if (conn) {
+        const live = await resolveDriver(conn).getChargeStatus(conn.credentials, res.externalOrderId);
+        if (live.ok) { status = live.data.status; paymentId = live.data.externalPaymentId; cardBrand = live.data.cardBrand; }
+      }
+    }
+    await finalizeTerminalCharge({ provider, externalOrderId: res.externalOrderId, status, externalPaymentId: paymentId, cardBrand });
+  });
+  return { received: true };
 }
