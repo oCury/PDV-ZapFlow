@@ -43,8 +43,8 @@ describe("applyTenantScope", () => {
     expect(args.where).toEqual({ active: true });
   });
 
-  it("knows the full set of tenant-owned models (26)", () => {
-    expect(TENANT_MODELS.size).toBe(26);
+  it("knows the full set of tenant-owned models (27)", () => {
+    expect(TENANT_MODELS.size).toBe(27);
     expect(TENANT_MODELS.has("Product")).toBe(true);
     expect(TENANT_MODELS.has("Tenant")).toBe(false);
   });

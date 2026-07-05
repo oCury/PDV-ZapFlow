@@ -15,9 +15,22 @@ export async function POST() {
     for (const device of devices) {
       await setOperatingMode(device.id, "PDV").catch(() => {});
       await prisma.paymentTerminal.upsert({
-        where: { tenant_id_mp_device_id: { tenant_id: tenantId, mp_device_id: device.id } },
+        where: {
+          tenant_id_provider_device_external_id: {
+            tenant_id: tenantId,
+            provider: "mercadopago",
+            device_external_id: device.id,
+          },
+        },
         update: { operating_mode: "PDV", last_seen_at: new Date(), status: "ONLINE" },
-        create: { name: device.id, mp_device_id: device.id, operating_mode: "PDV", status: "ONLINE" },
+        create: {
+          name: device.id,
+          provider: "mercadopago",
+          mp_device_id: device.id,
+          device_external_id: device.id,
+          operating_mode: "PDV",
+          status: "ONLINE",
+        },
       });
     }
     const terminals = await prisma.paymentTerminal.findMany({ orderBy: { created_at: "asc" } });
