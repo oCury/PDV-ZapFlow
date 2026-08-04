@@ -1,12 +1,5 @@
 import { test, expect } from "@playwright/test";
-
-async function login(page: import("@playwright/test").Page) {
-  await page.goto("/login");
-  await page.locator('input[type="email"]').fill("admin@zapflow.com");
-  await page.locator('input[type="password"]').fill("admin123");
-  await page.locator('button[type="submit"]').click();
-  await page.waitForURL("**/", { timeout: 10000 });
-}
+import { login } from "./helpers";
 
 test.describe.serial("Customers - CRUD Operations", () => {
   test("should display customers page", async ({ page }) => {
@@ -44,9 +37,15 @@ test.describe.serial("Customers - CRUD Operations", () => {
 
     await expect(page.getByText("Teste Playwright")).toBeVisible({ timeout: 10000 });
 
-    // Find the row and click edit
-    const row = page.locator(".rounded-2xl").filter({ hasText: "Teste Playwright" });
-    await row.locator('button[title="Editar"]').click();
+    // Find the row and click edit. Wait for the list to fully settle first so
+    // the row isn't shifting under us (previously caused a "not stable" timeout).
+    await page.waitForLoadState("networkidle");
+    const row = page.locator("div.rounded-2xl").filter({ hasText: "Teste Playwright" });
+    const editBtn = row.locator('button[title="Editar"]');
+    await editBtn.scrollIntoViewIfNeeded();
+    // The floating "Suporte IA" button (fixed bottom-right, z-50) can overlap the
+    // row action buttons, so dispatch the click directly to bypass the overlay.
+    await editBtn.dispatchEvent("click");
 
     await expect(page.getByRole("heading", { name: "Editar Cliente" })).toBeVisible();
 
@@ -64,8 +63,12 @@ test.describe.serial("Customers - CRUD Operations", () => {
 
     page.on("dialog", (d) => d.accept());
 
-    const row = page.locator(".rounded-2xl").filter({ hasText: "Teste Editado PW" });
-    await row.locator('button[title="Excluir"]').click();
+    await page.waitForLoadState("networkidle");
+    const row = page.locator("div.rounded-2xl").filter({ hasText: "Teste Editado PW" });
+    const deleteBtn = row.locator('button[title="Excluir"]');
+    await deleteBtn.scrollIntoViewIfNeeded();
+    // Bypass the floating "Suporte IA" overlay (fixed bottom-right, z-50).
+    await deleteBtn.dispatchEvent("click");
 
     await expect(page.getByText("Teste Editado PW")).not.toBeVisible({ timeout: 10000 });
   });

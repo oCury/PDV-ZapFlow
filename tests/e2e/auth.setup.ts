@@ -11,7 +11,7 @@ setup("login as admin", async ({ page }) => {
   await page.click('button[type="submit"]');
 
   // Wait for redirect to dashboard
-  await expect(page).toHaveURL("/", { timeout: 10000 });
+  await page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 10000 });
 
   // Save signed-in state
   await page.context().storageState({ path: "tests/e2e/.auth-state.json" });

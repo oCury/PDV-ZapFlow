@@ -1,34 +1,9 @@
 import { test, expect } from "@playwright/test";
-
-async function login(page: import("@playwright/test").Page) {
-  await page.goto("/login");
-  await page.locator('input[type="email"]').fill("admin@zapflow.com");
-  await page.locator('input[type="password"]').fill("admin123");
-  await page.locator('button[type="submit"]').click();
-  await page.waitForURL("**/", { timeout: 10000 });
-}
+import { login, addProductAndFinish } from "./helpers";
 
 async function addProductAndOpenPayment(page: import("@playwright/test").Page) {
-  await page.goto("/pdv");
-  await page.waitForTimeout(2000);
-
-  // Click first enabled product card
-  const productCard = page.locator("button.touch-target.group").first();
-  await expect(productCard).toBeVisible({ timeout: 10000 });
-  await productCard.click();
-
-  await page.waitForTimeout(500);
-
-  // Dismiss low-stock alert if visible
-  const dismissBtn = page.getByText("Dispensar Tudo");
-  if (await dismissBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-    await dismissBtn.click();
-  }
-
-  // Click Finalizar Venda
-  const finishBtn = page.getByRole("button", { name: /Finalizar Venda/ });
-  await expect(finishBtn).toBeEnabled({ timeout: 3000 });
-  await finishBtn.click();
+  // Add a product and finish the sale (handles variant products deterministically).
+  await addProductAndFinish(page);
 
   // Skip customer identification
   await expect(page.getByText("Identificar Cliente")).toBeVisible({ timeout: 5000 });
@@ -94,34 +69,28 @@ test.describe.serial("Terminal Payment Flow", () => {
     await login(page);
     await addProductAndOpenPayment(page);
 
-    // Select the "Cartão / Maquininha" payment method tab if present
-    const cardTab = page.getByRole("button", { name: /Cart[aã]o|Maquininha/i });
-    if (await cardTab.isVisible({ timeout: 2000 }).catch(() => false)) {
-      await cardTab.click();
-    }
+    // Reveal the payment-method picker. Scope to the "Pagamentos" row so we don't
+    // hit the delivery section's own "Adicionar" button.
+    await page
+      .getByText("Pagamentos", { exact: true })
+      .locator("..")
+      .getByRole("button", { name: "Adicionar" })
+      .click();
 
-    // The TerminalPaymentPanel should now render with the stubbed terminal
-    await expect(page.getByText("Maquininha Teste")).toBeVisible({ timeout: 5000 });
+    // Choose the card method, enter an amount on the keypad, and confirm — this
+    // registers a single CARD payment, which renders the terminal panel.
+    await page.getByRole("button", { name: "Cartão" }).click();
+    await page.getByRole("button", { name: "2", exact: true }).click();
+    await page.getByRole("button", { name: "5", exact: true }).click();
+    await page.getByRole("button", { name: "Confirmar" }).click();
 
-    // Select Crédito method
-    await page.getByRole("button", { name: /Crédito/i }).click();
+    // The TerminalPaymentPanel renders for the single, auto-selected active
+    // terminal. A lone terminal shows no name dropdown, so assert the panel's own
+    // controls (the "Crédito" method button) instead of the terminal name.
+    await expect(page.getByRole("button", { name: "Crédito" })).toBeVisible({ timeout: 5000 });
 
-    // Select 3x installments if the selector is visible
-    const installmentSelect = page.locator("select").filter({ hasText: /3x/ });
-    if (await installmentSelect.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await installmentSelect.selectOption("3");
-    } else {
-      // Try selecting by value from the installments dropdown
-      const select = page.locator("select").last();
-      if (await select.isVisible({ timeout: 1000 }).catch(() => false)) {
-        await select.selectOption("3");
-      }
-    }
-
-    // Click "Enviar para maquininha"
+    // Send the charge to the stubbed terminal and expect the approval screen.
     await page.getByRole("button", { name: /Enviar para maquininha/i }).click();
-
-    // Assert the approval screen appears
     await expect(page.getByText(/Pagamento Aprovado!/i)).toBeVisible({ timeout: 10000 });
   });
 });

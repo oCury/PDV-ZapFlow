@@ -1,13 +1,6 @@
 import { test, expect } from "@playwright/test";
 import path from "path";
-
-async function login(page: import("@playwright/test").Page) {
-  await page.goto("/login");
-  await page.locator('input[type="email"]').fill("admin@zapflow.com");
-  await page.locator('input[type="password"]').fill("admin123");
-  await page.locator('button[type="submit"]').click();
-  await page.waitForURL("**/", { timeout: 10000 });
-}
+import { login } from "./helpers";
 
 test.describe.serial("Products - NF-e Import", () => {
   test("should display import NF-e button", async ({ page }) => {

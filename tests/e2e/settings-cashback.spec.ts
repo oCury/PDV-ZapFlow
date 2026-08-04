@@ -1,63 +1,59 @@
 import { test, expect } from "@playwright/test";
+import { login } from "./helpers";
 
-async function login(page: import("@playwright/test").Page) {
-  await page.goto("/login");
-  await page.locator('input[type="email"]').fill("admin@zapflow.com");
-  await page.locator('input[type="password"]').fill("admin123");
-  await page.locator('button[type="submit"]').click();
-  await page.waitForURL("**/", { timeout: 10000 });
-}
+// Cashback configuration lives on the dedicated /cashback page (behind the
+// "Configurações" toggle), NOT on /settings. This spec was previously pointed
+// at a "Notificações de Cashback" section on /settings that no longer exists.
+test.describe.serial("Cashback - Settings", () => {
+  const openSettings = async (page: import("@playwright/test").Page) => {
+    await page.goto("/cashback");
+    await expect(page.getByRole("heading", { name: "Cashback", exact: true })).toBeVisible({
+      timeout: 10000,
+    });
+    await page.getByRole("button", { name: "Configurações", exact: true }).click();
+    await expect(page.getByText("Configurações do Cashback")).toBeVisible({ timeout: 10000 });
+  };
 
-test.describe.serial("Settings - Cashback Notifications", () => {
-  test("should display notification settings section", async ({ page }) => {
+  const percentInput = (page: import("@playwright/test").Page) =>
+    page.locator('input[type="number"][min="1"][max="50"]');
+  const daysInput = (page: import("@playwright/test").Page) =>
+    page.locator('input[type="number"][min="1"][max="90"]');
+  const saveBtn = (page: import("@playwright/test").Page) =>
+    page
+      .locator("section")
+      .filter({ hasText: "Configurações do Cashback" })
+      .getByRole("button", { name: "Salvar" });
+
+  test("should display cashback settings section", async ({ page }) => {
     await login(page);
-    await page.goto("/settings");
+    await openSettings(page);
 
-    await expect(page.getByRole("heading", { name: "Configurações", exact: true })).toBeVisible();
-    await expect(page.getByText("Notificações de Cashback")).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText("Dias após a compra para enviar")).toBeVisible();
     await expect(page.getByText("Percentual de cashback")).toBeVisible();
+    await expect(page.getByText("Dias para envio automático")).toBeVisible();
   });
 
   test("should save and persist custom values", async ({ page }) => {
     await login(page);
-    await page.goto("/settings");
-    await expect(page.getByText("Notificações de Cashback")).toBeVisible({ timeout: 10000 });
+    await openSettings(page);
 
-    // Wait for settings to load
-    const daysInput = page.locator('input[type="number"][min="1"][max="90"]');
-    await expect(daysInput).toBeVisible();
-
-    // Set new values
-    await daysInput.fill("7");
-    await page.locator('input[type="number"][min="1"][max="50"]').fill("20");
-
-    // Save
-    const saveBtn = page.locator("section").filter({ hasText: "Notificações de Cashback" }).getByRole("button", { name: "Salvar" });
-    await saveBtn.click();
-
-    // Wait for success
+    await percentInput(page).fill("20");
+    await daysInput(page).fill("7");
+    await saveBtn(page).click();
     await expect(page.getByText("Configurações salvas!")).toBeVisible({ timeout: 5000 });
 
-    // Reload and verify
-    await page.reload();
-    await expect(page.getByText("Notificações de Cashback")).toBeVisible({ timeout: 10000 });
-    await page.waitForTimeout(2000);
-
-    await expect(page.locator('input[type="number"][min="1"][max="90"]')).toHaveValue("7", { timeout: 5000 });
-    await expect(page.locator('input[type="number"][min="1"][max="50"]')).toHaveValue("20", { timeout: 5000 });
+    // Reload, reopen settings, and confirm the values persisted.
+    await openSettings(page);
+    await expect(percentInput(page)).toHaveValue("20", { timeout: 5000 });
+    await expect(daysInput(page)).toHaveValue("7", { timeout: 5000 });
   });
 
   test("should restore defaults", async ({ page }) => {
     await login(page);
-    await page.goto("/settings");
-    await expect(page.getByText("Notificações de Cashback")).toBeVisible({ timeout: 10000 });
+    await openSettings(page);
 
-    await page.locator('input[type="number"][min="1"][max="90"]').fill("15");
-    await page.locator('input[type="number"][min="1"][max="50"]').fill("10");
-
-    const saveBtn = page.locator("section").filter({ hasText: "Notificações de Cashback" }).getByRole("button", { name: "Salvar" });
-    await saveBtn.click();
+    await percentInput(page).fill("10");
+    await daysInput(page).fill("15");
+    await saveBtn(page).click();
     await expect(page.getByText("Configurações salvas!")).toBeVisible({ timeout: 5000 });
   });
 });
