@@ -5,7 +5,7 @@ export const TENANT_MODELS = new Set<string>([
   "CashRegisterShift", "SaleItem", "CustomerFollowup", "StoreSettings",
   "CommissionRule", "CommissionCategoryRule", "CommissionTier", "SalesGoal",
   "FiscalQueue", "FiscalEvent", "FiscalSequence", "Exchange", "ExchangeItem",
-  "Voucher", "VoucherUsage", "Delivery",
+  "Voucher", "VoucherUsage", "Delivery", "ProviderConnection",
 ]);
 
 type AnyArgs = Record<string, unknown>;

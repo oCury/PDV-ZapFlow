@@ -18,7 +18,8 @@ export interface MpOrder {
 }
 
 export async function createTerminalOrder(
-  input: CreateTerminalOrderInput
+  input: CreateTerminalOrderInput,
+  accessToken?: string,
 ): Promise<MpOrder> {
   const amount = toAmountString(input.amount);
   const body = {
@@ -42,13 +43,14 @@ export async function createTerminalOrder(
     method: "POST",
     body: JSON.stringify(body),
     idempotencyKey: input.externalRef,
+    accessToken,
   })) as MpOrder;
 }
 
-export async function getOrder(orderId: string): Promise<MpOrder> {
-  return (await mpFetch(`/v1/orders/${orderId}`)) as MpOrder;
+export async function getOrder(orderId: string, accessToken?: string): Promise<MpOrder> {
+  return (await mpFetch(`/v1/orders/${orderId}`, { accessToken })) as MpOrder;
 }
 
-export async function cancelOrder(orderId: string): Promise<MpOrder> {
-  return (await mpFetch(`/v1/orders/${orderId}/cancel`, { method: "POST" })) as MpOrder;
+export async function cancelOrder(orderId: string, accessToken?: string): Promise<MpOrder> {
+  return (await mpFetch(`/v1/orders/${orderId}/cancel`, { method: "POST", accessToken })) as MpOrder;
 }

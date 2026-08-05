@@ -8,15 +8,16 @@ datasource db {
 }
 
 model Tenant {
-  id            String        @id @default(cuid())
-  name          String
-  slug          String        @unique
-  plan          Plan?
-  active        Boolean       @default(true)
-  trial_ends_at DateTime?
-  created_at    DateTime      @default(now())
-  updated_at    DateTime      @updatedAt
-  mp_connection MpConnection?
+  id                   String               @id @default(cuid())
+  name                 String
+  slug                 String               @unique
+  plan                 Plan?
+  active               Boolean              @default(true)
+  trial_ends_at        DateTime?
+  created_at           DateTime             @default(now())
+  updated_at           DateTime             @updatedAt
+  mp_connection        MpConnection?
+  provider_connections ProviderConnection[]
 
   @@map("tenants")
 }
@@ -52,6 +53,24 @@ model MpConnection {
 
   @@index([mp_user_id])
   @@map("mp_connections")
+}
+
+model ProviderConnection {
+  id                  String               @id @default(cuid())
+  tenant_id           String
+  provider            TerminalProviderName
+  credentials         String               // AES-256-GCM encrypted JSON (secretbox)
+  mode                ProviderMode         @default(sandbox)
+  status              ConnectionStatus     @default(disconnected)
+  external_account_id String?
+  created_at          DateTime             @default(now())
+  updated_at          DateTime             @updatedAt
+
+  tenant Tenant @relation(fields: [tenant_id], references: [id])
+
+  @@unique([tenant_id, provider])
+  @@index([provider, external_account_id])
+  @@map("provider_connections")
 }
 
 enum UserRole {
@@ -392,20 +411,42 @@ enum TerminalChargeStatus {
   EXPIRED
 }
 
+enum TerminalProviderName {
+  mercadopago
+  stone
+  connecttef
+}
+
+enum ProviderMode {
+  sandbox
+  live
+}
+
+enum ConnectionStatus {
+  disconnected
+  sandbox
+  live
+  error
+}
+
 model PaymentTerminal {
-  id             String                @id @default(cuid())
-  tenant_id      String?
-  name           String
-  mp_device_id   String
-  operating_mode TerminalOperatingMode @default(PDV)
-  status         TerminalStatus        @default(UNKNOWN)
-  location_label String?
-  is_active      Boolean               @default(true)
-  last_seen_at   DateTime?
-  created_at     DateTime              @default(now())
+  id                 String                @id @default(cuid())
+  tenant_id          String?
+  name               String
+  provider           TerminalProviderName  @default(mercadopago)
+  mp_device_id       String                // DEPRECATED — dropped in a later phase
+  device_external_id String?
+  operating_mode     TerminalOperatingMode @default(PDV)
+  status             TerminalStatus        @default(UNKNOWN)
+  location_label     String?
+  is_active          Boolean               @default(true)
+  last_seen_at       DateTime?
+  created_at         DateTime              @default(now())
 
   charges TerminalCharge[]
 
+  @@unique([tenant_id, provider, device_external_id])
+  // additive-safety: kept so the currently-deployed (old) code's sync upsert keeps working; dropped in Phase 11
   @@unique([tenant_id, mp_device_id])
   @@index([tenant_id])
   @@index([is_active])
@@ -413,23 +454,28 @@ model PaymentTerminal {
 }
 
 model TerminalCharge {
-  id            String               @id @default(cuid())
-  tenant_id     String?
-  sale_id       String?
-  terminal_id   String
-  mp_order_id   String
-  mp_payment_id String?
-  amount        Decimal              @db.Decimal(10, 2)
-  method        TerminalChargeMethod
-  installments  Int                  @default(1)
-  status        TerminalChargeStatus @default(CREATED)
-  error_code    String?
-  created_at    DateTime             @default(now())
-  resolved_at   DateTime?
+  id                  String               @id @default(cuid())
+  tenant_id           String?
+  sale_id             String?
+  terminal_id         String
+  provider            TerminalProviderName @default(mercadopago)
+  mp_order_id         String               // DEPRECATED — dropped later
+  mp_payment_id       String?              // DEPRECATED — dropped later
+  external_order_id   String?
+  external_payment_id String?
+  amount              Decimal              @db.Decimal(10, 2)
+  method              TerminalChargeMethod
+  installments        Int                  @default(1)
+  status              TerminalChargeStatus @default(CREATED)
+  error_code          String?
+  created_at          DateTime             @default(now())
+  resolved_at         DateTime?
 
   terminal PaymentTerminal @relation(fields: [terminal_id], references: [id])
   sale     Sale?           @relation(fields: [sale_id], references: [id])
 
+  @@unique([tenant_id, provider, external_order_id])
+  // additive-safety: kept until Phase 11 so old code paths remain valid on the shared DB
   @@unique([tenant_id, mp_order_id])
   @@index([tenant_id])
   @@index([terminal_id])

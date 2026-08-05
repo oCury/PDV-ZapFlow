@@ -18,20 +18,19 @@ export class MpApiError extends Error {
 
 export async function mpFetch(
   path: string,
-  init: RequestInit & { idempotencyKey?: string } = {}
+  init: RequestInit & { idempotencyKey?: string; accessToken?: string } = {},
 ): Promise<unknown> {
-  const { idempotencyKey, headers, ...rest } = init;
+  const { idempotencyKey, accessToken, headers, ...rest } = init;
+  const token = accessToken ?? getAccessToken();
   const res = await fetch(`${MP_BASE_URL}${path}`, {
     ...rest,
     headers: {
-      Authorization: `Bearer ${getAccessToken()}`,
+      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
       ...(idempotencyKey ? { "X-Idempotency-Key": idempotencyKey } : {}),
-      ...headers,
+      ...(headers as Record<string, string> | undefined),
     },
   });
-  if (!res.ok) {
-    throw new MpApiError(res.status, await res.text());
-  }
+  if (!res.ok) throw new MpApiError(res.status, await res.text());
   return res.json();
 }

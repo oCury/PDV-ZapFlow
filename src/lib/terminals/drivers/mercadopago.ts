@@ -1,0 +1,137 @@
+import { createTerminalOrder, getOrder, cancelOrder } from "@/lib/mercadopago/orders";
+import { listDevices, setOperatingMode } from "@/lib/mercadopago/devices";
+import { validateWebhookSignature } from "@/lib/mercadopago/checkout";
+import { mapMpErrorToOperatorMessage } from "@/lib/mercadopago/errors";
+import { normalizeChargeStatus } from "../status";
+import type {
+  TerminalDriver,
+  DriverResult,
+  ProviderCharge,
+  ProviderCredentials,
+  CreateChargeInput,
+  WebhookResolution,
+  ProviderDevice,
+} from "../types";
+
+function token(creds: ProviderCredentials): string {
+  return String(creds.accessToken ?? "");
+}
+
+function extractPayment(order: any): { id?: string; status?: string } {
+  return order?.transactions?.payments?.[0] ?? {};
+}
+
+export const mercadoPagoDriver: TerminalDriver = {
+  name: "mercadopago",
+  capabilities: {
+    deviceSync: true,
+    operatingModes: true,
+    cancel: true,
+    installments: true,
+    methods: ["CREDIT", "DEBIT", "PIX"],
+  },
+
+  async createCharge(creds: ProviderCredentials, input: CreateChargeInput): Promise<DriverResult<ProviderCharge>> {
+    try {
+      const order: any = await createTerminalOrder(
+        {
+          terminalDeviceId: input.deviceExternalId,
+          amount: input.amount,
+          method: input.method,
+          installments: input.installments,
+          externalRef: input.externalRef,
+        },
+        token(creds),
+      );
+      return {
+        ok: true,
+        data: {
+          externalOrderId: order.id,
+          status: normalizeChargeStatus(order.status ?? "created"),
+          raw: order,
+        },
+      };
+    } catch (err) {
+      return { ok: false, error: mapMpErrorToOperatorMessage(err) };
+    }
+  },
+
+  async getChargeStatus(creds: ProviderCredentials, externalOrderId: string): Promise<DriverResult<ProviderCharge>> {
+    try {
+      const order: any = await getOrder(externalOrderId, token(creds));
+      const p = extractPayment(order);
+      return {
+        ok: true,
+        data: {
+          externalOrderId,
+          externalPaymentId: p.id,
+          status: normalizeChargeStatus(p.status ?? order.status ?? "processing"),
+          raw: order,
+        },
+      };
+    } catch (err) {
+      return { ok: false, error: mapMpErrorToOperatorMessage(err) };
+    }
+  },
+
+  async cancelCharge(creds: ProviderCredentials, externalOrderId: string): Promise<DriverResult<void>> {
+    try {
+      await cancelOrder(externalOrderId, token(creds));
+      return { ok: true, data: undefined };
+    } catch (err) {
+      return { ok: false, error: mapMpErrorToOperatorMessage(err) };
+    }
+  },
+
+  verifyWebhook(headers: Record<string, string>, rawBody: string): boolean {
+    const dataId = (() => {
+      try {
+        return JSON.parse(rawBody)?.data?.id ?? "";
+      } catch {
+        return "";
+      }
+    })();
+    return validateWebhookSignature(
+      headers["x-signature"] ?? "",
+      headers["x-request-id"] ?? "",
+      dataId,
+    );
+  },
+
+  async parseWebhook(_headers: Record<string, string>, body: any): Promise<DriverResult<WebhookResolution>> {
+    const orderId = body?.data?.id ?? body?.id;
+    if (!orderId) return { ok: false, error: { code: "GENERIC", message: "webhook sem order id" } };
+    return {
+      ok: true,
+      data: {
+        providerName: "mercadopago",
+        externalOrderId: String(orderId),
+        status: "PROCESSING",
+        tenantHint: body?.user_id
+          ? { key: "external_account_id", value: String(body.user_id) }
+          : undefined,
+      },
+    };
+  },
+
+  async listDevices(creds: ProviderCredentials): Promise<DriverResult<ProviderDevice[]>> {
+    try {
+      const devices = await listDevices(token(creds));
+      return {
+        ok: true,
+        data: devices.map((d) => ({ id: d.id, operatingMode: d.operating_mode as "PDV" | "STANDALONE" | undefined })),
+      };
+    } catch (err) {
+      return { ok: false, error: mapMpErrorToOperatorMessage(err) };
+    }
+  },
+
+  async setOperatingMode(creds: ProviderCredentials, deviceId: string, mode: "PDV" | "STANDALONE"): Promise<DriverResult<void>> {
+    try {
+      await setOperatingMode(deviceId, mode, token(creds));
+      return { ok: true, data: undefined };
+    } catch (err) {
+      return { ok: false, error: mapMpErrorToOperatorMessage(err) };
+    }
+  },
+};
